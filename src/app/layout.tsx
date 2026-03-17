@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Roboto ,DM_Sans} from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
+import { Toaster } from "sonner"
+
 import "./globals.css";
 
 
@@ -30,6 +32,7 @@ export default function RootLayout({
         className={dmSans.className}
       >
           {children}
+          <Toaster />
       </body>
     </html>
         </ClerkProvider>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter,useSearchParams } from "next/navigation";
 import { useSignIn } from "@clerk/nextjs/legacy";
+import {toast} from "sonner"
 
 export default function SignIn() {
   const [role, setRole] = useState<"student" | "landlord">("student");
@@ -12,7 +13,9 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const {isLoaded,signIn,setActive} = useSignIn();
+  const params = useSearchParams();
   if (!isLoaded) return null;
+  
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,14 +27,14 @@ export default function SignIn() {
       });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
-        router.push("/dashboard");
+        toast.success("Signed in successfully!");
+        router.push("/home");
       } else {
-        // Handle other states like MFA, etc.
         console.error("Unexpected sign-in state:", result);
       }
     }catch (err) {
       console.error("Sign-in error:", err);
-      alert("Failed to sign in. Please check your credentials and try again.");
+      toast.error("Failed to sign in. Please check your credentials and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -43,7 +46,8 @@ export default function SignIn() {
       return signIn.authenticateWithRedirect({  
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
+        redirectUrlComplete: "/home",
+      
       });
       }
 
@@ -106,7 +110,7 @@ export default function SignIn() {
  
 
           {/* Form Fields */}
-          <form className="space-y-2.5">
+          <form className="space-y-2.5" onSubmit={handleSubmit}>
             {/* Email Input */}
             <div>
               <label className="block text-sm font-medium text-gray-900 mb-1">Email address</label>

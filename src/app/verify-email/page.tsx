@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import { useRouter } from "next/navigation";
+import {toast} from "sonner"
 import Link from "next/link";
 
 export default function VerifyEmail() {
@@ -55,8 +56,9 @@ export default function VerifyEmail() {
       const completeSignup = await signUp?.attemptEmailAddressVerification({ code });
       if(completeSignup?.status === "complete"){  
         setStatus("Email verified successfully! Redirecting...");
+       toast.success("Email verified successfully!");
         await setActive({ session: completeSignup.createdSessionId });
-        router.push("/");
+        router.push("/complete-profile");
 
       }
       else{
@@ -64,7 +66,7 @@ export default function VerifyEmail() {
       }
 
     }catch(err){
-      console.error("Error verifying email:", err);
+      toast.error("Failed to verify email. Please check the code and try again.");
     }
     finally{
       setIsLoading(false);

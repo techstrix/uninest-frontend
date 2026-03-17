@@ -5,10 +5,10 @@ import { useSignUp } from "@clerk/nextjs/legacy";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { sign } from "crypto";
+import { toast } from "sonner";
 
 export default function SignUp() {
-  const [role, setRole] = useState<"student" | "landlord">("student");
-  const { isLoaded, signUp, setActive } = useSignUp();
+  const { isLoaded, signUp } = useSignUp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -20,7 +20,7 @@ export default function SignUp() {
     return signUp?.authenticateWithRedirect({
       strategy: "oauth_google",
       redirectUrl:"/sso-callback",
-      redirectUrlComplete:"/"
+      redirectUrlComplete:"/post-google-auth"
     })
   }
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -34,18 +34,17 @@ export default function SignUp() {
         emailAddress: email,
         password,
         firstName,
-        lastName,
-        unsafeMetadata:{
-          role:role
-        },      
+        lastName
+   
       })
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      toast.success("Sign-up successful! Please check your email for the verification code.");
       router.push("/verify-email");
 
 
     }catch(error){
-      console.error("Error creating sign-up:", error);
+      toast.error("Failed to sign up. Please check your details and try again.");
     }finally{
       setIsLoading(false);
     }
@@ -106,42 +105,7 @@ export default function SignUp() {
           <h2 className="text-[24px] font-bold text-gray-900 mb-0.5">Create an account</h2>
           <p className="text-gray-500 text-[14px] mb-4">Join UniNest today</p>
 
-          {/* User Type Selection */}
-          <div className="mb-3">
-            <label className="block text-sm text-gray-500 mb-2">I am a</label>
-            <div className="grid grid-cols-2 gap-2">
-              {/* Student Option */}
-              <button
-                type="button"
-                onClick={() => setRole("student")}
-                className={`rounded-lg p-3 text-left transition border-2 ${
-                  role === "student"
-                    ? "border-[#1a3c34] bg-white"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <span className="text-lg block mb-0.5">🎓</span>
-                <p className="font-semibold text-sm text-gray-900">Student</p>
-                <p className="text-[11px] text-gray-500 leading-snug">Search for housing</p>
-              </button>
-
-              {/* Landlord Option */}
-              <button
-                type="button"
-                onClick={() => setRole("landlord")}
-                className={`rounded-lg p-3 text-left transition border-2 ${
-                  role === "landlord"
-                    ? "border-[#1a3c34] bg-white"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
-              >
-                <span className="text-lg block mb-0.5">🏠</span>
-                <p className="font-semibold text-sm text-gray-900">Landlord</p>
-                <p className="text-[11px] text-gray-500 leading-snug">List property</p>
-              </button>
-            </div>
-          </div>
-
+      
           {/* Form Fields */}
           <form className="space-y-2.5" onSubmit={handleSubmit}>
             {/* Full Name */}
