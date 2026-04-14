@@ -3,19 +3,27 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter,useSearchParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { useSignIn } from "@clerk/nextjs/legacy";
 import {toast} from "sonner"
 
 export default function SignIn() {
-  const [role, setRole] = useState<"student" | "landlord">("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const {isSignedIn,user} = useUser();
   const router = useRouter();
   const {isLoaded,signIn,setActive} = useSignIn();
-  const params = useSearchParams();
-  if (!isLoaded) return null;
-  
+  const params = useSearchParams();  
+  useEffect(() => {
+    if(!isLoaded) return;
+
+    if(isSignedIn){
+      router.push("/home");
+    }
+  })
+
+  if(!isLoaded) return null;
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +51,8 @@ export default function SignIn() {
     }
 
      const signInWithGoogle = () =>  {
+
+      setIsLoading(true);
       return signIn.authenticateWithRedirect({  
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
@@ -140,7 +150,7 @@ export default function SignIn() {
               type="submit"
               className="w-full h-10 bg-[#1a3c34] hover:bg-[#15332c] text-white font-semibold text-sm rounded-lg transition-colors"
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
@@ -176,7 +186,7 @@ export default function SignIn() {
                 fill="#EA4335"
               />
             </svg>
-            Sign in with Google 
+            {isLoading ? "Redirecting..." : "Sign in with Google"}
           </button>
 
           {/* Sign Up Link */}

@@ -14,11 +14,26 @@ export default function CompleteProfile() {
         try {   
             const res = await fetch("/api/set-role", {
                 method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 body: JSON.stringify({ role }),
             });
+            if (!res.ok) {
+                throw new Error("Failed to set role");
+            }
+
+
+
+
             router.push("/home");
+
+            
+
+
+
         } catch (error) {
-            console.error("Error setting role:", error);
+            console.error("Error setting role", error);
         } finally {
             setIsLoading(false);
         }
@@ -29,10 +44,10 @@ export default function CompleteProfile() {
         <div className="flex min-h-screen">
             {/* Left Side - Branding */}
             <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden bg-[#1a3c34] text-white flex-col justify-between p-6 pl-10">
-                <div className="absolute inset-0 bg-gradient-to-b from-[#1a3c34] via-[#1a3c34] to-[#163830]" />
-                <div className="absolute top-[-10%] right-[-20%] w-[500px] h-[500px] rounded-full bg-[#2a5c4a] opacity-40 blur-[100px]" />
-                <div className="absolute bottom-[10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-[#2a5c4a] opacity-30 blur-[80px]" />
-                <div className="absolute top-0 left-0 w-[250px] h-[80px] bg-[#3d7a65] opacity-50 blur-[40px] rounded-full" />
+                <div className="absolute inset-0 bg-linear-to-b from-[#1a3c34] via-[#1a3c34] to-[#163830]" />
+                <div className="absolute top-[-10%] right-[-20%] w-125 h-125 rounded-full bg-[#2a5c4a] opacity-40 blur-[100px]" />
+                <div className="absolute bottom-[10%] left-[-10%] w-100 h-100 rounded-full bg-[#2a5c4a] opacity-30 blur-[80px]" />
+                <div className="absolute top-0 left-0 w-62.5 h-20 bg-[#3d7a65] opacity-50 blur-2xl rounded-full" />
 
                 <div className="relative z-10">
                     <h1 className="text-2xl font-bold italic mb-12 tracking-tight">
@@ -67,7 +82,7 @@ export default function CompleteProfile() {
 
             {/* Right Side - Complete Profile Form */}
             <div className="w-full lg:w-[55%] bg-white flex flex-col justify-center px-6 sm:px-10 lg:px-14 py-6">
-                <div className="max-w-[400px] w-full mx-auto">
+                <div className="max-w-100 w-full mx-auto">
                     {/* Header */}
                     <h2 className="text-[24px] font-bold text-gray-900 mb-0.5">Complete your profile</h2>
                     <p className="text-gray-500 text-[14px] mb-6">

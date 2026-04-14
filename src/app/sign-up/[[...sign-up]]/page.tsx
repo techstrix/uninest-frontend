@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSignUp } from "@clerk/nextjs/legacy";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { sign } from "crypto";
 import { toast } from "sonner";
@@ -14,7 +15,15 @@ export default function SignUp() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { isSignedIn, user } = useUser();
   const router = useRouter();
+  useEffect(() => {
+      if(!isLoaded) return;
+
+    if(isSignedIn){
+      router.push("/home");
+    }
+  })
 
   const signUpWithGoogle  = () => {
     return signUp?.authenticateWithRedirect({
@@ -180,7 +189,7 @@ export default function SignUp() {
               type="submit"
               className="w-full h-10 bg-[#1a3c34] hover:bg-[#15332c] text-white font-semibold text-sm rounded-lg transition-colors" disabled={isLoading}
             >
-              Sign Up
+              {isLoading ? "Signing you up..." : "Sign Up"}
             </button>
           </form>
 
@@ -216,7 +225,7 @@ export default function SignUp() {
                 fill="#EA4335"
               />
             </svg>
-            Sign up with Google
+          {isLoading ? "Redirecting..." : "Sign up with Google"}
           </button>
 
           {/* Sign In Link */}
