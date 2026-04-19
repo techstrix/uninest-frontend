@@ -111,8 +111,8 @@ export default function Home() {
   const [confirmDelete,setConfirmDelete] = useState(false)
   const [loadingListings, setLoadingListings] = useState(true)
   const [searchInputState,setSearchInputState] = useState("")
-
-  
+  const role = user?.publicMetadata?.role
+  console.log("User role:", role)
 
 
   const searchParams = useSearchParams()
@@ -127,6 +127,10 @@ export default function Home() {
     
     router.push("/sign-in");
   }
+  if(isLoaded && isSignedIn && role === "landlord"){
+    router.push("/landlord-dashboard")  
+  }
+  
   
   },[isSignedIn,router,isLoaded])
 

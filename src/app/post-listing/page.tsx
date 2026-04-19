@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Upload } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import {useUser} from "@clerk/nextjs";
 import {useRouter} from "next/navigation";
+import { getListingPaymentStatus, initiateListingStkPush } from "../actions/mpesa-actions";
 const amenities = [
   "High Speed WiFi",
   "24/7 Water/Borehole",
@@ -126,6 +127,14 @@ export default function PostListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPhotoCount, setSelectedPhotoCount] = useState(0);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentPhone, setPaymentPhone] = useState("");
+  const [paymentStatusText, setPaymentStatusText] = useState("");
+  const [paymentError, setPaymentError] = useState("");
+  const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [isPublishingAfterPayment, setIsPublishingAfterPayment] = useState(false);
   const router = useRouter();
   const {user,isLoaded} = useUser();
   useEffect(() => {
@@ -154,6 +163,155 @@ export default function PostListingPage() {
       delete next[key];
       return next;
     });
+  };
+
+  const closePaymentModal = () => {
+    if (isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment) {
+      return;
+    }
+
+    setIsPaymentModalOpen(false);
+    setPaymentError("");
+    setPaymentStatusText("");
+    setPendingFormData(null);
+  };
+
+  const cloneFormData = (source: FormData) => {
+    const cloned = new FormData();
+    source.forEach((value, key) => {
+      cloned.append(key, value);
+    });
+    return cloned;
+  };
+
+  const publishListingAfterPayment = async (checkoutRequestId: string) => {
+    if (!pendingFormData) {
+      return { ok: false, error: "Missing listing form data." };
+    }
+
+    const formDataToSubmit = cloneFormData(pendingFormData);
+    formDataToSubmit.append("checkoutRequestId", checkoutRequestId);
+
+    const response = await fetch("/api/listings", {
+      method: "POST",
+      body: formDataToSubmit,
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: "Could not publish listing after payment. Please try again.",
+      };
+    }
+
+    return { ok: true };
+  };
+
+  const waitForPaymentResult = async (checkoutRequestId: string) => {
+    const maxAttempts = 24;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+
+      const statusResult = await getListingPaymentStatus(checkoutRequestId);
+
+      if (!statusResult.success) {
+        return { ok: false, message: statusResult.error || "Could not confirm payment status." };
+      }
+
+      if (!statusResult.data) {
+        return { ok: false, message: "Missing payment status data." };
+      }
+
+      const status = statusResult.data.status;
+
+      if (status === "SUCCESS") {
+        return {
+          ok: true,
+          message: statusResult.data.mpesaReference
+            ? `Payment successful. Receipt: ${statusResult.data.mpesaReference}`
+            : "Payment successful.",
+        };
+      }
+
+      if (status === "FAILED" || status === "CANCELLED") {
+        return {
+          ok: false,
+          message: statusResult.data.resultDesc || "Payment was not successful.",
+        };
+      }
+
+      setPaymentStatusText("Waiting for M-Pesa confirmation...");
+    }
+
+    return { ok: false, message: "Payment is still pending. Please try again shortly." };
+  };
+
+  const handleListingPayment = async () => {
+    if (!pendingFormData) {
+      setPaymentError("Listing data is missing. Please submit the form again.");
+      return;
+    }
+
+    setPaymentError("");
+    setPaymentStatusText("Sending M-Pesa prompt to your phone...");
+    setIsInitiatingPayment(true);
+
+    try {
+      const result = await initiateListingStkPush(paymentPhone);
+
+      if (!result.success) {
+        setPaymentError(result.error || "Failed to initiate payment.");
+        setPaymentStatusText("");
+        return;
+      }
+
+      const paymentData = result.data;
+      if (!paymentData) {
+        setPaymentError("Unable to track payment. Missing payment response data.");
+        setPaymentStatusText("");
+        return;
+      }
+
+      const checkoutRequestId = paymentData.checkoutRequestId;
+      if (!checkoutRequestId) {
+        setPaymentError("Unable to track payment. Missing CheckoutRequestID.");
+        setPaymentStatusText("");
+        return;
+      }
+
+      setPaymentStatusText(paymentData.customerMessage || "M-Pesa prompt sent. Confirm on your phone.");
+      setIsCheckingPayment(true);
+
+      const paymentStatus = await waitForPaymentResult(checkoutRequestId);
+
+      if (!paymentStatus.ok) {
+        setPaymentError(paymentStatus.message);
+        return;
+      }
+
+      setPaymentStatusText("Payment confirmed. Publishing your listing...");
+      setIsPublishingAfterPayment(true);
+      const publishResult = await publishListingAfterPayment(checkoutRequestId);
+
+      if (!publishResult.ok) {
+        setPaymentError(publishResult.error || "Could not publish listing.");
+        return;
+      }
+
+      setIsPaymentModalOpen(false);
+      setPendingFormData(null);
+      router.push("/landlord-dashboard");
+    } catch {
+      setPaymentError("Something went wrong while processing payment.");
+      setPaymentStatusText("");
+    } finally {
+      setIsInitiatingPayment(false);
+      setIsCheckingPayment(false);
+      setIsPublishingAfterPayment(false);
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -192,24 +350,15 @@ export default function PostListingPage() {
         return;
       }
 
-      const response = await fetch("/api/listings", {
-        method: "POST",
-        body: formData,
-      });
-
-
-
-      
-
-
-      if (!response.ok) {
-        setErrors({ submit: "Could not publish listing. Please try again." });
-      }
+      setPendingFormData(formData);
+      setPaymentPhone("");
+      setPaymentError("");
+      setPaymentStatusText("");
+      setIsPaymentModalOpen(true);
     } catch {
       setErrors({ submit: "Something went wrong. Please try again." });
     } finally {
       setIsSubmitting(false);
-      router.push("/landlord-dashboard"); 
     }
   };
 
@@ -439,10 +588,80 @@ export default function PostListingPage() {
             disabled={isSubmitting}
             className="h-12 w-full rounded-lg bg-[#fb8a3c] text-base font-semibold text-white transition hover:bg-[#f07a2f]"
           >
-            {isSubmitting ? "Publishing..." : "Publish Listing"}
+            {isSubmitting ? "Validating..." : "Create Listing"}
           </button>
         </form>
       </section>
+
+      {isPaymentModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close payment modal"
+            className="absolute inset-0 bg-[#0d1f17]/55"
+            onClick={closePaymentModal}
+          />
+
+          <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-[#c9d8d1] bg-white shadow-2xl">
+            <div className="flex items-center justify-between bg-[#2b6a56] px-5 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-white">Confirm Listing Payment</h2>
+                <p className="text-xs text-[#d7efe6]">Pay KES 1 to publish this listing</p>
+              </div>
+              <button
+                type="button"
+                onClick={closePaymentModal}
+                disabled={isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment}
+                className="rounded-full p-1.5 text-[#e3f7ef] transition hover:bg-[#255847] disabled:opacity-60"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-5 py-5">
+              <div className="space-y-1">
+                <label htmlFor="mpesaPhone" className="text-sm font-semibold text-[#111827]">
+                  M-Pesa Phone Number
+                </label>
+                <input
+                  id="mpesaPhone"
+                  type="tel"
+                  placeholder="2547XXXXXXXX"
+                  value={paymentPhone}
+                  onChange={(event) => setPaymentPhone(event.target.value)}
+                  disabled={isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment}
+                  className="h-11 w-full rounded-lg border border-[#d6d8de] bg-[#f7f8fa] px-3 text-sm text-[#111827] placeholder:text-[#7a8091] focus:border-[#2b6a56] focus:bg-white focus:outline-none disabled:opacity-70"
+                />
+                <p className="text-xs text-[#6b7280]">Use format `2547XXXXXXXX` (example: 254795109135).</p>
+              </div>
+
+              {paymentStatusText ? (
+                <p className="rounded-lg border border-[#d3e5e0] bg-[#f4faf8] px-3 py-2 text-sm text-[#184f43]">{paymentStatusText}</p>
+              ) : null}
+
+              {paymentError ? (
+                <p className="rounded-lg border border-[#f3c7c7] bg-[#fff5f5] px-3 py-2 text-sm text-[#b42318]">{paymentError}</p>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={handleListingPayment}
+                disabled={!paymentPhone.trim() || isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#fb8a3c] text-sm font-semibold text-white transition hover:bg-[#f07a2f] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {isPublishingAfterPayment ? "Publishing listing..." : "Processing payment..."}
+                  </>
+                ) : (
+                  "Pay & Publish Listing"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

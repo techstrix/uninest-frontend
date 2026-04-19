@@ -15,6 +15,19 @@ enum Role {
   LANDLORD
 }
 
+enum PaymentPurpose {
+  LISTING_FEE
+  DEPOSIT
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
 // --- MODELS ---
 
 model User {
@@ -36,6 +49,7 @@ model User {
   reviewsWritten  Review[]         @relation("StudentReviews")
   fraudReports    FraudReport[]    @relation("ReportedBy")
   contactReveals  ContactReveal[]  @relation("StudentReveals")
+  payments        Payment[]
 
   @@map("users")
 }
@@ -48,6 +62,7 @@ model LandlordProfile {
   isIdVerified     Boolean  @default(false) @map("is_id_verified")
   organisationName String?  @map("organisation_name")
   isOrganisation   Boolean  @default(false) @map("is_organisation")
+  
 
   // Relationships
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -83,6 +98,21 @@ model Listing {
   contactReveals ContactReveal[]
 
   @@map("listings")
+  listingViews ListingView[]
+}
+
+model ListingView {
+  id        String   @id @default(uuid())
+  listingId String   @map("listing_id")
+  userId    String?  @map("user_id") 
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+    @@index([userId])
+  @@map("listing_views")
 }
 
 model RentalRequest {
@@ -125,17 +155,37 @@ model Review {
 }
 
 model Payment {
-  id             String    @id @default(uuid()) @map("payment_id")
-  listingId      String    @map("listing_id")
-  amount         Decimal   @db.Decimal(10, 2)
-  mpesaReference String?   @unique @map("mpesa_reference")
-  mpesaPhone     String    @map("mpesa_phone")
-  status         String    @default("pending")
-  initiatedAt    DateTime  @default(now()) @map("initiated_at")
-  confirmedAt    DateTime? @map("confirmed_at")
+  id                 String         @id @default(uuid()) @map("payment_id")
+  userId             String         @map("user_id")
+  listingId          String?        @map("listing_id")
+  purpose            PaymentPurpose @map("purpose")
+  amount             Decimal        @db.Decimal(10, 2)
+  status             PaymentStatus  @default(PENDING)
+  mpesaPhone         String         @map("mpesa_phone")
+  mpesaReference     String?        @unique @map("mpesa_reference")
+  checkoutRequestId  String?        @unique @map("checkout_request_id")
+  merchantRequestId  String?        @unique @map("merchant_request_id")
+  accountReference   String?        @map("account_reference")
+  transactionDesc    String?        @map("transaction_desc")
+  transactionDateRaw String?        @map("transaction_date_raw")
+  resultCode         Int?           @map("result_code")
+  resultDesc         String?        @map("result_desc")
+  callbackPayload    Json?          @map("callback_payload")
+  initiatedAt        DateTime       @default(now()) @map("initiated_at")
+  confirmedAt        DateTime?      @map("confirmed_at")
+  failedAt           DateTime?      @map("failed_at")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
 
-  // Relationship
-  listing Listing @relation(fields: [listingId], references: [id])
+  // Relationships
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing? @relation(fields: [listingId], references: [id])
+
+  @@index([userId])
+  @@index([listingId])
+  @@index([purpose])
+  @@index([status])
+  @@index([initiatedAt])
 
   @@map("payments")
 }
@@ -158,7 +208,11 @@ model FraudReport {
   id           String   @id @default(uuid()) @map("report_id")
   listingId    String   @map("listing_id")
   reportedById String   @map("reported_by")
+  category     String
   reason       String   @db.Text
+  evidenceUrls Json     @default("[]") @map("evidence_urls")
+  visitedProperty Boolean @default(false) @map("visited_property")
+  acknowledged Boolean @default(false)
   status       String   @default("pending")
   createdAt    DateTime @default(now()) @map("created_at")
 

@@ -156,7 +156,6 @@ export default function ListingsManager({ listings }: ListingsManagerProps) {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900">Active Listings</h2>
-        <p className="text-sm text-slate-500">{slotsUsedText}</p>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">

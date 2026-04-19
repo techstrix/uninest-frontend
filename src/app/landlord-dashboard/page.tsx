@@ -1,9 +1,8 @@
 import Link from "next/link"
-import { auth, clerkClient } from "@clerk/nextjs/server"
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { Bell, CirclePlus, CreditCard, Lock, MessageSquare, Settings, BarChart3, Home, Sparkles } from "lucide-react"
-import { currentUser } from "@clerk/nextjs/server"
+import { Bell, Sparkles } from "lucide-react"
 import ListingsManager, { type DashboardListing } from "./listings-manager"
 import ProfileMenu from "./profile-menu"
 
@@ -18,15 +17,6 @@ type ListingCard = DashboardListing & {
 type DashboardPageProps = {
   searchParams?: Promise<{ tab?: string }>
 }
-
-const sidebarItems = [
-  { label: "My Listings", icon: Home, href: "/landlord-dashboard", active: true },
-  { label: "New Listing", icon: CirclePlus, href: "/post-listing", active: false },
-  { label: "Messages", icon: MessageSquare, href: "#", active: false, badge: "3" },
-  { label: "Payments", icon: CreditCard, href: "#", active: false },
-  { label: "Verification", icon: Lock, href: "#", active: false },
-  { label: "Settings", icon: Settings, href: "#", active: false },
-]
 
 function getNearestCampus(listing: {
   mainWalkingMinutes: number | null
@@ -48,22 +38,25 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
   const resolvedSearchParams = searchParams ? await searchParams : {}
   const activeTab = resolvedSearchParams.tab ?? "listings"
 
-  const { userId } = await auth()
+  const { userId} = await auth()
+   const user   = await currentUser()
 
-  const user = await currentUser()
-
-  const role = user?.publicMetadata?.role
-
-  if (role !== "landlord") {
+  if (!userId) {
+    console.log("No user id found, redirecting to home...")
     redirect("/home")
   }
 
-  if (!userId) {
-    redirect("/sign-in")
+  const client = await clerkClient()
+
+  const role = user?.publicMetadata?.role
+  if (!role) {
+    redirect("/complete-profile")
   }
 
-  const client = await clerkClient()
-  const clerkUser = await client.users.getUser(userId)
+  if (role !== "landlord") {
+    console.log("you are not a landlord, redirecting...")
+    redirect("/home")
+  }
 
   const landlordProfile = await prisma.landlordProfile.findUnique({
     where: { userId },
@@ -99,6 +92,25 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
     redirect("/complete-profile")
   }
 
+  const listingIds = landlordProfile.listings.map((listing) => listing.id)
+  const listingViewCountById = new Map<string, number>()
+
+  if (listingIds.length > 0) {
+    const viewCounts = await prisma.listingView.groupBy({
+      by: ["listingId"],
+      where: {
+        listingId: { in: listingIds },
+      },
+      _count: {
+        _all: true,
+      },
+    })
+
+    viewCounts.forEach((item) => {
+      listingViewCountById.set(item.listingId, item._count._all)
+    })
+  }
+
   const listings: ListingCard[] = landlordProfile.listings.map((listing) => {
     const nearestCampus = getNearestCampus(listing)
     const expiry = new Date(listing.updatedAt)
@@ -118,7 +130,7 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
       parklandsWalkingMinutes: listing.parklandsWalkingMinutes,
       campusMinutes: nearestCampus.minutes,
       campusLabel: nearestCampus.label,
-      views: listing.reviews.length * 4 + listing.photos.length * 3,
+      views: listingViewCountById.get(listing.id) ?? 0,
       expiresAt: expiry.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
@@ -132,6 +144,7 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
       })),
     }
   })
+  const clerkUser = await client.users.getUser(userId)
 
   const activeListings = listings.filter((listing) => listing.status.toLowerCase() === "active")
   const expiringSoon = listings.filter((listing) => listing.status.toLowerCase() === "expiring soon")
@@ -157,44 +170,6 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
         <aside className="hidden w-65 shrink-0 flex-col border-r border-white/10 bg-[#1f5a48] text-white lg:flex">
           <div className="px-5 py-6 text-2xl font-bold italic tracking-tight">
             <span className="text-emerald-200">Uni</span>Nest
-          </div>
-
-          <div className="border-t border-white/10 px-4 py-4">
-            <p className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-100/60">Main</p>
-            <nav className="space-y-1">
-              {sidebarItems.map((item) => {
-                const Icon = item.icon
-                const active = item.label === "My Listings"
-
-                const content = (
-                  <div
-                    className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-semibold transition ${
-                      active ? "bg-white/15 text-white" : "text-emerald-50/85 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 text-[#cb8cff]" />
-                    <span className="flex-1">{item.label}</span>
-                    {item.badge && (
-                      <span className="rounded-full bg-[#f59e0b] px-2 py-0.5 text-[11px] font-bold text-white">{item.badge}</span>
-                    )}
-                  </div>
-                )
-
-                if (active) {
-                  return (
-                    <Link key={item.label} href={item.href}>
-                      {content}
-                    </Link>
-                  )
-                }
-
-                return (
-                  <div key={item.label} className="cursor-not-allowed">
-                    {content}
-                  </div>
-                )
-              })}
-            </nav>
           </div>
 
           <div className="mt-auto border-t border-white/10 px-4 py-5">
@@ -235,7 +210,6 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
             {activeTab === "listings" ? (
               <ListingsManager listings={listings} />
             ) : null}
-
           </div>
         </main>
       </div>

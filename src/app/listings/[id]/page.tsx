@@ -1,10 +1,13 @@
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { MapPin, ShieldCheck, Star } from "lucide-react"
+import { MapPin, ShieldCheck } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import PhotosComponent from "./components/photosComponent"
+
 import PhotosComponentNormal from "./components/photosComponentNormal"
+import ViewTracker from "./components/view-tracker"
+import PayDepositCard from "./components/pay-deposit-card"
 
 
 type PageProps = {
@@ -99,6 +102,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
+      <ViewTracker listingId={listing.id} />
       <header className="bg-[#184f43] text-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/home" className="text-2xl font-bold italic tracking-tight">
@@ -193,35 +197,24 @@ export default async function ListingDetailsPage({ params }: PageProps) {
         </section>
 
         <aside className="space-y-4">
+            <PayDepositCard
+            landlordName={landlordName}
+            initials={initials}
+            avgRating={avgRating}
+            ratingCount={ratingCount}
+            phone={listing.landlord.user.phone ?? null}
+          />
           <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="text-lg font-bold text-gray-900">Contact Landlord</h3>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#184f43] text-sm font-bold text-white">
-                {initials || "LD"}
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">{landlordName}</p>
-                <p className="text-xs text-gray-500">
-                  {avgRating ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {avgRating.toFixed(1)} · {ratingCount} reviews
-                    </span>
-                  ) : (
-                    "No reviews yet"
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <button className="mt-4 w-full rounded-lg bg-[#184f43] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#123f35]">
-              Send Message
-            </button>
-            <button className="mt-2 w-full rounded-lg border border-[#184f43] bg-white px-4 py-2.5 text-sm font-semibold text-[#184f43] hover:bg-emerald-50">
-              Request Viewing
-            </button>
-            {listing.landlord.user.phone && (
-              <p className="mt-3 text-xs text-gray-500">Phone: {listing.landlord.user.phone}</p>
-            )}
+            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-600">Safety</h3>
+            <p className="mt-2 text-sm text-gray-700">
+              If this listing looks suspicious or misleading, let us know.
+            </p>
+            <Link
+              href={`/fraud-report?listingId=${listing.id}`}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#fb8a3c] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#f07a2f]"
+            >
+              Report this listing
+            </Link>
           </div>
 {/* 
           <div className="rounded-xl border border-gray-200 bg-white p-5">

@@ -1,10 +1,43 @@
 import { prisma } from "@/lib/prisma";
+import { PaymentPurpose, PaymentStatus } from "@prisma/client";
 import { auth } from "@clerk/nextjs/server";
 import fs from "fs";
 import path from "path";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const listingId = new URL(request.url).searchParams.get("listingId")?.trim()
+
+    if (listingId) {
+      const listing = await prisma.listing.findUnique({
+        where: { id: listingId },
+        include: {
+          photos: {
+            orderBy: {
+              displayOrder: "asc",
+            },
+          },
+        },
+      })
+
+      if (!listing) {
+        return Response.json({ error: "Listing not found" }, { status: 404 })
+      }
+
+      return Response.json(
+        {
+          listing: {
+            id: listing.id,
+            title: listing.title,
+            address: listing.address,
+            price: Number(listing.price),
+            photoUrl: listing.photos[0]?.photoUrl ?? null,
+          },
+        },
+        { status: 200 },
+      )
+    }
+
     const listings = await prisma.listing.findMany({
       where: {
         status: "active",
@@ -81,6 +114,11 @@ export async function POST(req: Request) {
 
   // --- FILES ---
   const files = formData.getAll("photos") as File[];
+  const checkoutRequestId = String(formData.get("checkoutRequestId") ?? "").trim();
+
+  if (!checkoutRequestId) {
+    return new Response("Payment is required before publishing", { status: 402 });
+  }
 
   // get landlord profile
   const landlord = await prisma.landlordProfile.findUnique({
@@ -89,6 +127,23 @@ export async function POST(req: Request) {
 
   if (!landlord) {
     return new Response("Not a landlord", { status: 403 });
+  }
+
+  const payment = await prisma.payment.findFirst({
+    where: {
+      checkoutRequestId,
+      userId,
+      purpose: PaymentPurpose.LISTING_FEE,
+      status: PaymentStatus.SUCCESS,
+      listingId: null,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!payment) {
+    return new Response("Listing payment not confirmed", { status: 402 });
   }
 
   try {
@@ -142,6 +197,14 @@ export async function POST(req: Request) {
           data: photoData,
         });
       }
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          listingId: listing.id,
+          status: PaymentStatus.SUCCESS,
+        },
+      });
     });
 
     return new Response("Listing created", { status: 200 });
