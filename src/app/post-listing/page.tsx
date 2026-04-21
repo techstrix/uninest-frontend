@@ -31,6 +31,14 @@ type PostListingDraft = {
 
 type FormErrors = Partial<Record<keyof PostListingDraft | "submit", string>>;
 
+type CampusKey = "mainWalkingMin" | "chiromoWalkingMin" | "parklandsWalkingMin";
+
+const campusCoordinates: Record<CampusKey, { coord: string }> = {
+  mainWalkingMin: { coord: "36.8219,-1.2771" },
+  chiromoWalkingMin: { coord: "36.8048,-1.2727" },
+  parklandsWalkingMin: { coord: "36.8149,-1.2685" },
+};
+
 function toNumber(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {
     return 0;
@@ -50,6 +58,44 @@ function getTextareaClassName(hasError: boolean) {
   return `w-full resize-none rounded-lg border bg-[#f1f2f5] px-3 py-3 text-sm text-gray-900 placeholder:text-[#7a8091] focus:bg-white focus:outline-none ${
     hasError ? "border-[#dc2626] focus:border-[#dc2626]" : "border-transparent focus:border-[#2b6a56]"
   }`;
+}
+
+async function calculateWalkingTimeFromCampus(houseLat: number, houseLng: number, campusCoord: string) {
+  const houseCoord = `${houseLng},${houseLat}`;
+  const url = `https://router.project-osrm.org/route/v1/foot/${campusCoord};${houseCoord}?overview=false`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Failed to calculate route.");
+  }
+
+  const data = await response.json();
+  const route = data?.routes?.[0];
+
+  if (!route) {
+    throw new Error("No route returned for campus distance.");
+  }
+
+  const distanceKm = route.distance / 1000;
+
+  return {
+    durationMin: Math.round(distanceKm * 12),
+  };
+}
+
+async function calculateCampusDistances(houseLat: number, houseLng: number) {
+  const entries = await Promise.all(
+    (Object.entries(campusCoordinates) as Array<[CampusKey, { coord: string }]>).map(async ([key, campus]) => {
+      const result = await calculateWalkingTimeFromCampus(houseLat, houseLng, campus.coord);
+      return [key, result] as const;
+    }),
+  );
+
+  return Object.fromEntries(entries) as Record<CampusKey, { durationMin: number }>;
+}
+
+function formatCoordinates(lat: number, lng: number) {
+  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }
 
 function validateDraft(draft: PostListingDraft): FormErrors {
@@ -135,6 +181,14 @@ export default function PostListingPage() {
   const [isInitiatingPayment, setIsInitiatingPayment] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
   const [isPublishingAfterPayment, setIsPublishingAfterPayment] = useState(false);
+  const [locationLabel, setLocationLabel] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [campusTimes, setCampusTimes] = useState<Record<CampusKey, number>>({
+    mainWalkingMin: 0,
+    chiromoWalkingMin: 0,
+    parklandsWalkingMin: 0,
+  });
   const router = useRouter();
   const {user,isLoaded} = useUser();
   useEffect(() => {
@@ -164,6 +218,84 @@ export default function PostListingPage() {
       return next;
     });
   };
+
+  const handleGetLocation = async () => {
+    setLocationError("");
+    setErrors((current) => {
+      if (!current.address && !current.mainWalkingMin && !current.chiromoWalkingMin && !current.parklandsWalkingMin) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next.address;
+      delete next.mainWalkingMin;
+      delete next.chiromoWalkingMin;
+      delete next.parklandsWalkingMin;
+      return next;
+    });
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    setLocationLoading(true);
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+        });
+      }).catch((error) => {
+        throw new Error(getGeolocationErrorMessage(error));
+      });
+
+      const { latitude, longitude ,accuracy} = position.coords;
+      if(accuracy > 100) {
+        console.warn(`Low location accuracy (${accuracy} meters). Consider allowing high accuracy or trying again in an open area.`);
+      }
+      let distances: Awaited<ReturnType<typeof calculateCampusDistances>>;
+
+      try {
+        distances = await calculateCampusDistances(latitude, longitude);
+      } catch (error) {
+        console.error("Campus routing failed", error);
+        throw new Error("Could not calculate campus distances. Please try again.");
+      }
+
+      setLocationLabel(formatCoordinates(latitude, longitude));
+      setCampusTimes({
+        mainWalkingMin: distances.mainWalkingMin.durationMin,
+        chiromoWalkingMin: distances.chiromoWalkingMin.durationMin,
+        parklandsWalkingMin: distances.parklandsWalkingMin.durationMin,
+      });
+    } catch (error) {
+      console.error("Location lookup failed", error);
+      setLocationError(error instanceof Error ? error.message : "Could not get your location. Please try again.");
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  function getGeolocationErrorMessage(error: GeolocationPositionError | unknown) {
+    if (typeof error !== "object" || error === null) {
+      return "Could not get your location. Please try again.";
+    }
+
+    const geoError = error as GeolocationPositionError;
+
+    switch (geoError.code) {
+      case geoError.PERMISSION_DENIED:
+        return "Location access was denied. Please allow location permission and try again.";
+      case geoError.POSITION_UNAVAILABLE:
+        return "Your current location could not be determined right now. Please try again.";
+      case geoError.TIMEOUT:
+        return "Location request timed out. Please try again.";
+      default:
+        return "Could not get your location. Please try again.";
+    }
+  }
 
   const closePaymentModal = () => {
     if (isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment) {
@@ -332,10 +464,10 @@ export default function PostListingPage() {
         title: String(formData.get("title") ?? "").trim(),
         description: String(formData.get("description") ?? "").trim(),
         price: toNumber(formData.get("price")),
-        address: String(formData.get("address") ?? "").trim(),
-        mainWalkingMin: toNumber(formData.get("mainWalkingMin")),
-        chiromoWalkingMin: toNumber(formData.get("chiromoWalkingMin")),
-        parklandsWalkingMin: toNumber(formData.get("parklandsWalkingMin")),
+        address: locationLabel.trim(),
+        mainWalkingMin: campusTimes.mainWalkingMin,
+        chiromoWalkingMin: campusTimes.chiromoWalkingMin,
+        parklandsWalkingMin: campusTimes.parklandsWalkingMin,
         amenities: formData.getAll("amenities").filter((entry): entry is string => typeof entry === "string"),
         bedroomType:
           typeof selectedBedroomType === "string" && selectedBedroomType.length > 0
@@ -343,6 +475,11 @@ export default function PostListingPage() {
             : null,
         photos,
       };
+
+      if (!locationLabel) {
+        setErrors({ address: "Click Get Location to populate the address and campus distances." });
+        return;
+      }
 
       const validationErrors = validateDraft(draft);
       if (Object.keys(validationErrors).length > 0) {
@@ -426,29 +563,36 @@ export default function PostListingPage() {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <label htmlFor="address" className="text-[15px] font-semibold text-[#111827]">
-                Address:
-              </label>
+              <label className="text-[15px] font-semibold text-[#111827]">Location:</label>
               {errors.address && <p className="text-xs text-[#dc2626]">{errors.address}</p>}
             </div>
+            <button
+              type="button"
+              onClick={handleGetLocation}
+              disabled={locationLoading}
+              className="inline-flex h-12 items-center justify-center rounded-lg bg-[#2b6a56] px-4 text-sm font-semibold text-white transition hover:bg-[#245644] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {locationLoading ? "Getting location..." : "Get Location"}
+            </button>
             <input
               id="address"
               name="address"
               type="text"
-              placeholder="Enter property address"
-              required
-              onChange={() => clearError("address")}
-              className={getInputClassName(Boolean(errors.address))}
+              value={locationLabel}
+              readOnly
+              placeholder="Location will appear here"
+              className={`${getInputClassName(Boolean(errors.address))} cursor-not-allowed bg-[#e9edf2]`}
             />
+            {locationError ? <p className="text-xs text-[#dc2626]">{locationError}</p> : null}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <label htmlFor="mainWalkingMin" className="text-[15px] font-semibold text-[#111827]">
-                  Main walking min:
+                  Main campus walk:
                 </label>
                 {errors.mainWalkingMin && <p className="text-xs text-[#dc2626]">{errors.mainWalkingMin}</p>}
               </div>
@@ -456,17 +600,16 @@ export default function PostListingPage() {
                 id="mainWalkingMin"
                 name="mainWalkingMin"
                 type="number"
-                min="0"
-                defaultValue={0}
-                onChange={() => clearError("mainWalkingMin")}
-                className={getInputClassName(Boolean(errors.mainWalkingMin))}
+                value={campusTimes.mainWalkingMin}
+                readOnly
+                className={`${getInputClassName(Boolean(errors.mainWalkingMin))} cursor-not-allowed bg-[#e9edf2]`}
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <label htmlFor="chiromoWalkingMin" className="text-[15px] font-semibold text-[#111827]">
-                  Chiromo walking min:
+                  Chiromo campus walk:
                 </label>
                 {errors.chiromoWalkingMin && <p className="text-xs text-[#dc2626]">{errors.chiromoWalkingMin}</p>}
               </div>
@@ -474,17 +617,16 @@ export default function PostListingPage() {
                 id="chiromoWalkingMin"
                 name="chiromoWalkingMin"
                 type="number"
-                min="0"
-                defaultValue={0}
-                onChange={() => clearError("chiromoWalkingMin")}
-                className={getInputClassName(Boolean(errors.chiromoWalkingMin))}
+                value={campusTimes.chiromoWalkingMin}
+                readOnly
+                className={`${getInputClassName(Boolean(errors.chiromoWalkingMin))} cursor-not-allowed bg-[#e9edf2]`}
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <label htmlFor="parklandsWalkingMin" className="text-[15px] font-semibold text-[#111827]">
-                  Parklands walking min:
+                  Parklands campus walk:
                 </label>
                 {errors.parklandsWalkingMin && <p className="text-xs text-[#dc2626]">{errors.parklandsWalkingMin}</p>}
               </div>
@@ -492,10 +634,9 @@ export default function PostListingPage() {
                 id="parklandsWalkingMin"
                 name="parklandsWalkingMin"
                 type="number"
-                min="0"
-                defaultValue={0}
-                onChange={() => clearError("parklandsWalkingMin")}
-                className={getInputClassName(Boolean(errors.parklandsWalkingMin))}
+                value={campusTimes.parklandsWalkingMin}
+                readOnly
+                className={`${getInputClassName(Boolean(errors.parklandsWalkingMin))} cursor-not-allowed bg-[#e9edf2]`}
               />
             </div>
           </div>

@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/techs/Documents/Uninest/uninest/apps/admin/src/app/page.tsx"],"sourcesContent":["export default function AdminHomePage() {\n  return (\n    <main className=\"flex min-h-screen items-center justify-center bg-[#f3f4f6] px-4\">\n      <div className=\"rounded-2xl border border-gray-200 bg-white px-8 py-10 shadow-sm\">\n        <p className=\"text-xs font-semibold uppercase tracking-[0.25em] text-[#184f43]\">Admin</p>\n        <h1 className=\"mt-2 text-3xl font-bold text-gray-900\">Hello World</h1>\n        <p className=\"mt-2 text-sm text-gray-600\">Admin dashboard scaffold ready.</p>\n      </div>\n    </main>\n  )\n}\n"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACtB,qBACE,8OAAC;QAAK,WAAU;kBACd,cAAA,8OAAC;YAAI,WAAU;;8BACb,8OAAC;oBAAE,WAAU;8BAAmE;;;;;;8BAChF,8OAAC;oBAAG,WAAU;8BAAwC;;;;;;8BACtD,8OAAC;oBAAE,WAAU;8BAA6B;;;;;;;;;;;;;;;;;AAIlD"}}]
+}

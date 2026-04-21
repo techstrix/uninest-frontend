@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 22, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/techs/Documents/Uninest/uninest/apps/admin/src/app/layout.tsx"],"sourcesContent":["import type { Metadata } from \"next\"\nimport { ClerkProvider } from \"@clerk/nextjs\"\n\nimport \"./globals.css\"\n\nexport const metadata: Metadata = {\n  title: \"Uninest Admin\",\n  description: \"Admin dashboard for Uninest.\",\n}\n\nexport default function RootLayout({\n  children,\n}: Readonly<{\n  children: React.ReactNode\n}>) {\n  return (\n    <ClerkProvider>\n      <html lang=\"en\">\n        <body>{children}</body>\n      </html>\n    </ClerkProvider>\n  )\n}\n"],"names":[],"mappings":";;;;;;;AACA;;;;AAIO,MAAM,WAAqB;IAChC,OAAO;IACP,aAAa;AACf;AAEe,SAAS,WAAW,EACjC,QAAQ,EAGR;IACA,qBACE,8OAAC,0LAAa;kBACZ,cAAA,8OAAC;YAAK,MAAK;sBACT,cAAA,8OAAC;0BAAM;;;;;;;;;;;;;;;;AAIf"}}]
+}
