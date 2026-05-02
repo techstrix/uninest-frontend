@@ -3,7 +3,9 @@ import { Roboto ,DM_Sans} from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from "sonner"
 
+// @ts-expect-error CSS module declaration is provided by Next.js at build time.
 import "./globals.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 
 const dmSans = DM_Sans({

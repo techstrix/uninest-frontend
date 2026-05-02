@@ -8,9 +8,17 @@ export async function POST(req: Request) {
         return new Response("Unauthorized", { status: 401 });
     }
 
-    const body = await req.json();
-    const role = body?.role === "landlord" ? "landlord" : "student";
+    let body: { role?: unknown } = {};
 
+    try {
+        body = await req.json();
+    } catch {
+        return new Response("Invalid request body", { status: 400 });
+    }
+
+    const roleValue = typeof body.role === "string" ? body.role.trim().toLowerCase() : "student";
+    const role = roleValue === "landlord" ? "landlord" : "student";
+    
     const client = await clerkClient();
     const clerkUser = await client.users.getUser(userId);
     const email = clerkUser.emailAddresses[0]?.emailAddress;
@@ -47,23 +55,41 @@ export async function POST(req: Request) {
                     isActive: true,
                 },
             });
-
-            if (role === "landlord") {
+            
+            console.log(role)
+            if (role == "landlord") {
+                console.log("role is landlord")
                 await tx.landlordProfile.upsert({
                     where: { userId },
                     create: {
                         userId,
+                        isPhoneVerified: false,
+                        isIdVerified: false,
+                        isLandlordVerified: false,
+                        verificationStatus: "pending",
                     },
-                    update: {},
+                    update: {
+                        isPhoneVerified: false,
+                        isIdVerified: false,
+                        isLandlordVerified: false,
+                        verificationStatus: "pending",
+                    },
                 });
+
+                                console.log("Landlord profile upserted with userId:", userId)
+
             }
         });
 
-        await client.users.updateUserMetadata(userId, {
-            publicMetadata: {
-                role,
-            },
-        });
+        try {
+            await client.users.updateUserMetadata(userId, {
+                publicMetadata: {
+                    role,
+                },
+            });
+        } catch (metadataError) {
+            console.error("Failed to update Clerk metadata", metadataError);
+        }
 
         return new Response("Profile saved successfully", { status: 200 });
     } catch (error) {

@@ -54,11 +54,26 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
   }
 
   if (role !== "landlord") {
-    console.log("you are not a landlord, redirecting...")
     redirect("/home")
   }
 
   const landlordProfile = await prisma.landlordProfile.findUnique({
+    where: { userId },
+    select: {
+      isLandlordVerified: true,
+      verificationStatus: true,
+    },
+  })
+
+  if (!landlordProfile) {
+    redirect("/complete-profile")
+  }
+
+  if (!landlordProfile.isLandlordVerified) {
+    redirect("/verify-success")
+  }
+
+  const profileData = await prisma.landlordProfile.findUnique({
     where: { userId },
     include: {
       user: {
@@ -88,11 +103,7 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
     },
   })
 
-  if (!landlordProfile) {
-    redirect("/complete-profile")
-  }
-
-  const listingIds = landlordProfile.listings.map((listing) => listing.id)
+  const listingIds = profileData.listings.map((listing) => listing.id)
   const listingViewCountById = new Map<string, number>()
 
   if (listingIds.length > 0) {
@@ -111,7 +122,7 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
     })
   }
 
-  const listings: ListingCard[] = landlordProfile.listings.map((listing) => {
+  const listings: ListingCard[] = profileData.listings.map((listing) => {
     const nearestCampus = getNearestCampus(listing)
     const expiry = new Date(listing.updatedAt)
     expiry.setDate(expiry.getDate() + 30)
@@ -151,8 +162,8 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
   const totalViews = listings.reduce((sum, listing) => sum + listing.views, 0)
   const unreadMessages = 3
 
-  const firstName = landlordProfile.user.firstName ?? clerkUser.firstName ?? ""
-  const lastName = landlordProfile.user.lastName ?? clerkUser.lastName ?? ""
+  const firstName = profileData.user.firstName ?? clerkUser.firstName ?? ""
+  const lastName = profileData.user.lastName ?? clerkUser.lastName ?? ""
   const fullName = `${firstName} ${lastName}`.trim() || "Landlord"
   const initials = fullName
     .split(" ")
@@ -161,7 +172,7 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
     .map((part) => part[0]?.toUpperCase())
     .join("")
 
-  const trustScore = landlordProfile.trustScore
+  const trustScore = profileData.trustScore
   const email = clerkUser.primaryEmailAddress?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress ?? ""
 
   return (

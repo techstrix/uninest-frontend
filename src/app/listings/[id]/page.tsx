@@ -1,13 +1,13 @@
 import Image from "next/image"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { MapPin, ShieldCheck } from "lucide-react"
+import { MapPin, ShieldCheck, Mail, Phone } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import PhotosComponent from "./components/photosComponent"
 
 import PhotosComponentNormal from "./components/photosComponentNormal"
 import ViewTracker from "./components/view-tracker"
-import PayDepositCard from "./components/pay-deposit-card"
+import ListingMap from "./components/listing-map"
 
 
 type PageProps = {
@@ -18,6 +18,7 @@ const campusOrder = ["Main Campus", "Chiromo", "Parklands"] as const
 
 export default async function ListingDetailsPage({ params }: PageProps) {
   const { id } = await params
+  const mapboxAccessToken = process.env.MAPBOX_ACCESS_TOKEN ?? ""
 
   const listing = await prisma.listing.findUnique({
     where: { id },
@@ -99,6 +100,8 @@ export default async function ListingDetailsPage({ params }: PageProps) {
   
   const heroPhoto = listing.photos[0]?.photoUrl
   const sidePhotos = listing.photos.slice(1, 3)
+  const listingLat = listing.latitude ?? null
+  const listingLng = listing.longitude ?? null
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
@@ -193,17 +196,87 @@ export default async function ListingDetailsPage({ params }: PageProps) {
             </div>
 
             <p className="mt-6 text-sm leading-7 text-gray-700">{listing.description ?? "No description provided."}</p>
+
+            {listingLat !== null && listingLng !== null ? (
+              <div className="mt-6 space-y-3">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-gray-600">Location map</h2>
+                <div className="grid gap-3 lg:grid-cols-[1fr_220px] lg:items-start">
+                  <ListingMap
+                    listing={{
+                      lat: Number(listingLat),
+                      lng: Number(listingLng),
+                      title: listing.title,
+                    }}
+                    accessToken={mapboxAccessToken}
+                    nearestCampus={nearest?.campus === "Main Campus" ? "Main Campus" : nearest?.campus === "Chiromo" ? "Chiromo" : "Parklands"}
+                    campusMinutes={{
+                      mainWalkingMin: listing.mainWalkingMinutes ?? -1,
+                      chiromoWalkingMin: listing.chiromoWalkingMinutes ?? -1,
+                      parklandsWalkingMin: listing.parklandsWalkingMinutes ?? -1,
+                    }}
+                    nearestCampusMinutes={nearest?.minutes ?? -1}
+                  />
+                  <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Legend</p>
+                    <div className="mt-3 space-y-3">
+                      <LegendItem color="#ef4444" label="This listing" />
+                      <LegendItem color="#184f43" label="Main Campus" />
+                      <LegendItem color="#fb8a3c" label="Chiromo" />
+                      <LegendItem color="#7c3aed" label="Parklands" />
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${Number(listingLat)},${Number(listingLng)}&destination=${nearest?.campus === "Main Campus" ? "36.8146,-1.2771" : nearest?.campus === "Chiromo" ? "36.8048,-1.2727" : "36.8149,-1.2685"}&travelmode=walking`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex rounded-full bg-[#184f43] px-3 py-1.5 text-xs font-semibold text-white"
+                    >
+                      Directions
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </section>
 
         <aside className="space-y-4">
-            <PayDepositCard
-            landlordName={landlordName}
-            initials={initials}
-            avgRating={avgRating}
-            ratingCount={ratingCount}
-            phone={listing.landlord.user.phone ?? null}
-          />
+          <div className="rounded-xl border border-gray-200 bg-white p-5">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-600">Contact Landlord</h3>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#184f43] text-sm font-bold text-white">
+                {initials || "LD"}
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">{landlordName}</p>
+                <p className="text-xs text-gray-500">
+                  {avgRating ? `${avgRating.toFixed(1)} · ${ratingCount} reviews` : "No reviews yet"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Phone</p>
+                <a href={listing.landlord.user.phone ? `tel:${listing.landlord.user.phone}` : "#"} className="mt-1 inline-flex items-center gap-2 text-[#184f43] font-semibold">
+                  <Phone className="h-4 w-4" />
+                  {listing.landlord.user.phone ?? "Not shared"}
+                </a>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Email</p>
+                <p className="mt-1 inline-flex items-center gap-2 text-[#184f43] font-semibold">
+                  <Mail className="h-4 w-4" />
+                  {listing.landlord.user.firstName ? `${listing.landlord.user.firstName}.${listing.landlord.user.lastName ?? ""}@contact.uninest` : "Request via phone"}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Landlord</p>
+                <p className="mt-1 text-sm text-gray-800">{landlordName}</p>
+              </div>
+            </div>
+          </div>
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="text-sm font-bold uppercase tracking-wide text-gray-600">Safety</h3>
             <p className="mt-2 text-sm text-gray-700">
@@ -216,39 +289,19 @@ export default async function ListingDetailsPage({ params }: PageProps) {
               Report this listing
             </Link>
           </div>
-{/* 
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-600">Trust & Verification</h3>
-            <ul className="mt-3 space-y-2 text-sm text-gray-700">
-              <li className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                {listing.landlord.isPhoneVerified ? "Phone number verified" : "Phone number not verified"}
-              </li>
-              <li className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                {listing.landlord.isIdVerified ? "Government ID approved" : "Government ID pending"}
-              </li>
-              <li className="inline-flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                {ratingCount} verified tenant reviews
-              </li>
-            </ul>
-
-            <div className="mt-4">
-              <div className="mb-1 flex items-center justify-between text-sm text-gray-600">
-                <span>Trust score</span>
-                <span className="font-semibold text-gray-900">{listing.landlord.trustScore}</span>
-              </div>
-              <div className="h-2 rounded-full bg-gray-200">
-                <div
-                  className="h-2 rounded-full bg-[#184f43]"
-                  style={{ width: `${Math.min(Math.max(listing.landlord.trustScore, 0), 100)}%` }}
-                />
-              </div>
-            </div>
-          </div> */}
         </aside>
       </main>
     </div>
   )
 }
+
+function LegendItem({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="h-3.5 w-3.5 rounded-full border border-white shadow-sm" style={{ backgroundColor: color }} />
+      <span className="text-gray-700">{label}</span>
+    </div>
+  )
+}
+
+

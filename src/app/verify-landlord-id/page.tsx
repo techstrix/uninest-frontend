@@ -1,9 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import PostListingClient from "./post-listing-client"
+import VerifyLandlordIdClient from "./verify-landlord-id-client"
 
-export default async function PostListingPage() {
+export default async function VerifyLandlordIdPage() {
   const { userId } = await auth()
   const user = await currentUser()
 
@@ -19,7 +19,7 @@ export default async function PostListingPage() {
   const landlordProfile = await prisma.landlordProfile.findUnique({
     where: { userId },
     select: {
-      isLandlordVerified: true,
+      id: true,
       verificationStatus: true,
     },
   })
@@ -28,9 +28,9 @@ export default async function PostListingPage() {
     redirect("/complete-profile")
   }
 
-  if (!landlordProfile.isLandlordVerified) {
-    redirect("/verify-success")
+  if (landlordProfile.verificationStatus === "verified") {
+    redirect("/landlord-dashboard")
   }
 
-  return <PostListingClient />
+  return <VerifyLandlordIdClient />
 }

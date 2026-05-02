@@ -1,9 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
+import VerifySuccessClient from "./verify-success-client"
 import { prisma } from "@/lib/prisma"
-import PostListingClient from "./post-listing-client"
 
-export default async function PostListingPage() {
+export default async function VerifySuccessPage() {
   const { userId } = await auth()
   const user = await currentUser()
 
@@ -28,9 +28,5 @@ export default async function PostListingPage() {
     redirect("/complete-profile")
   }
 
-  if (!landlordProfile.isLandlordVerified) {
-    redirect("/verify-success")
-  }
-
-  return <PostListingClient />
+  return <VerifySuccessClient />
 }

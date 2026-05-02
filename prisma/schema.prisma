@@ -60,6 +60,8 @@ model LandlordProfile {
   trustScore       Int      @default(0) @map("trust_score")
   isPhoneVerified  Boolean  @default(false) @map("is_phone_verified")
   isIdVerified     Boolean  @default(false) @map("is_id_verified")
+  isLandlordVerified Boolean @default(false) @map("is_landlord_verified")
+  verificationStatus String  @default("pending") @map("verification_status")
   organisationName String?  @map("organisation_name")
   isOrganisation   Boolean  @default(false) @map("is_organisation")
   
@@ -87,6 +89,10 @@ model Listing {
   status                  String    @default("draft")
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  //Coordinatefor Mapping
+  latitude                Float?
+  longitude               Float?
 
   // Relationships
   landlord       LandlordProfile @relation(fields: [landlordId], references: [id])

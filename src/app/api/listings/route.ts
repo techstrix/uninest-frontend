@@ -103,6 +103,8 @@ export async function POST(req: Request) {
   const description = String(formData.get("description") ?? "");
   const price = Number(formData.get("price") ?? 0);
   const address = String(formData.get("address") ?? "");
+  const latitude = Number(formData.get("latitude") ?? 0);
+  const longitude = Number(formData.get("longitude") ?? 0);
 
   const amenities = formData.getAll("amenities").map(item => String(item));
 
@@ -155,6 +157,8 @@ export async function POST(req: Request) {
           description,
           price,
           address,
+          latitude,
+          longitude,
           amenities,
           bedroomType,
           mainWalkingMinutes: mainWalkingMin,
