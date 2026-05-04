@@ -1,0 +1,450 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="dashboard-shell">
+  <aside class="sidebar">
+    <div class="brand"><span>Uni</span>Nest <small>Admin</small></div>
+    <nav>
+      <a class="nav-item {% if active_tab == 'dashboard' %}active{% endif %}" href="?tab=dashboard">Dashboard</a>
+      <a class="nav-item {% if active_tab == 'reports' %}active{% endif %}" href="?tab=reports">Reports <span>{{ open_reports_count }}</span></a>
+      <a class="nav-item {% if active_tab == 'listings' %}active{% endif %}" href="?tab=listings">Listings</a>
+      <a class="nav-item" href="?tab=payments">Payments</a>
+    </nav>
+    <div class="profile">
+      <div class="avatar">{{ initials }}</div>
+      <div>
+        <strong>{{ full_name }}</strong>
+        <p>Super Administrator</p>
+      </div>
+      <a href="{% url 'admin_logout' %}">Log out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1>
+          {% if active_tab == 'reports' %}Reports{% elif active_tab == 'listings' %}Listings{% elif active_tab == 'payments' %}Payments{% else %}Admin Dashboard{% endif %}
+        </h1>
+        <p>
+          {% if active_tab == 'reports' %}Review fraud reports and take action{% elif active_tab == 'listings' %}Search and manage landlord listings{% elif active_tab == 'payments' %}Track payment activity and status{% else %}Platform overview - pending actions require your attention{% endif %}
+        </p>
+      </div>
+      <span>{{ today_label }}</span>
+    </header>
+
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    {% if active_tab == 'dashboard' %}
+      <section class="analytics-strip">
+        <article class="analytics-card">
+          <p class="analytics-label">Listing health</p>
+          <h3>{{ active_listings }}/{{ total_listings }}</h3>
+          <p class="analytics-copy">Active listings out of all listings</p>
+        </article>
+        <article class="analytics-card">
+          <p class="analytics-label">Portfolio value</p>
+          <h3>KES {{ total_listings_value|floatformat:0 }}</h3>
+          <p class="analytics-copy">Total asking price across all listings</p>
+        </article>
+        <article class="analytics-card">
+          <p class="analytics-label">Average price</p>
+          <h3>KES {{ average_listing_price|floatformat:0 }}</h3>
+          <p class="analytics-copy">Mean listing price</p>
+        </article>
+        <article class="analytics-card">
+          <p class="analytics-label">Latest listing</p>
+          <h3>{% if latest_listing %}{{ latest_listing.title }}{% else %}None{% endif %}</h3>
+          <p class="analytics-copy">{% if latest_listing %}{{ latest_listing.landlord.user.email }}{% else %}No recent listings{% endif %}</p>
+        </article>
+      </section>
+
+      <section class="analytics-grid">
+        <article class="panel analytics-panel">
+          <div class="panel-header"><h2>Listings by status</h2><span>DB breakdown</span></div>
+          <div class="chip-grid">
+            {% for item in listing_status_breakdown %}
+              <span class="analytics-chip">{{ item.status }} <strong>{{ item.count }}</strong></span>
+            {% empty %}
+              <p class="empty-inline">No listing data available.</p>
+            {% endfor %}
+          </div>
+        </article>
+        <article class="panel analytics-panel">
+          <div class="panel-header"><h2>Reports by status</h2><span>Review queue</span></div>
+          <div class="chip-grid">
+            {% for item in report_status_breakdown %}
+              <span class="analytics-chip">{{ item.status }} <strong>{{ item.count }}</strong></span>
+            {% empty %}
+              <p class="empty-inline">No report data available.</p>
+            {% endfor %}
+          </div>
+        </article>
+        <article class="panel analytics-panel">
+          <div class="panel-header"><h2>Payments by status</h2><span>Transaction flow</span></div>
+          <div class="chip-grid">
+            {% for item in payment_status_breakdown %}
+              <span class="analytics-chip">{{ item.status }} <strong>{{ item.count }}</strong></span>
+            {% empty %}
+              <p class="empty-inline">No payment data available.</p>
+            {% endfor %}
+          </div>
+        </article>
+      </section>
+
+      <section class="analytics-grid wide">
+        <article class="panel analytics-panel">
+          <div class="panel-header"><h2>Top landlords</h2><span>By listings</span></div>
+          <div class="mini-list">
+            {% for row in top_landlord_rows %}
+              <div class="mini-row">
+                <div>
+                  <strong>{{ row.name }}</strong>
+                  <p>{{ row.email }}</p>
+                </div>
+                <div class="mini-meta">
+                  <span>{{ row.count }} listings</span>
+                </div>
+              </div>
+            {% empty %}
+              <p class="empty-inline">No landlord data available.</p>
+            {% endfor %}
+          </div>
+        </article>
+
+        <article class="panel analytics-panel">
+          <div class="panel-header"><h2>Revenue by purpose</h2><span>Payments</span></div>
+          <div class="mini-list">
+            {% for row in revenue_by_purpose %}
+              <div class="mini-row">
+                <div>
+                  <strong>{{ row.purpose }}</strong>
+                  <p>{{ row.count }} payments</p>
+                </div>
+                <div class="mini-meta">
+                  <span>KES {{ row.total|default:0|floatformat:0 }}</span>
+                </div>
+              </div>
+            {% empty %}
+              <p class="empty-inline">No payment analytics available.</p>
+            {% endfor %}
+          </div>
+        </article>
+      </section>
+    {% elif active_tab == 'reports' %}
+      <section class="cards">
+        {% for card in summary_cards %}
+          <article class="card stat-card">
+            <div class="value">{{ card.value }}</div>
+            <div class="label">{{ card.label }}</div>
+            <div class="sub">{{ card.sublabel }}</div>
+          </article>
+        {% endfor %}
+      </section>
+
+      <section class="panels single">
+        <article class="panel">
+          <div class="panel-header"><h2>Open Fraud Reports</h2><span>{{ open_reports_count }} open</span></div>
+          {% for report in fraud_reports %}
+            <div class="report-row">
+              <div>
+                <strong>{{ report.listing.title }}</strong>
+                <p>{{ report.listing.address }}</p>
+                <small>Category: {{ report.category }}</small>
+                <small>Status: {{ report.status }}</small>
+              </div>
+              <button
+                type="button"
+                class="review-btn"
+                data-id="{{ report.id }}"
+                data-title="{{ report.listing.title|escape }}"
+                data-address="{{ report.listing.address|escape }}"
+                data-price="{{ report.listing.price|floatformat:0 }}"
+                data-listing-status="{{ report.listing.status|escape }}"
+                data-landlord-name="{{ report.listing.landlord.name|escape }}"
+                data-landlord-email="{{ report.listing.landlord.email|escape }}"
+                data-reporter-name="{{ report.reporter.name|escape }}"
+                data-reporter-email="{{ report.reporter.email|escape }}"
+                data-reporter-phone="{{ report.reporter.phone|default:'Not provided'|escape }}"
+                data-category="{{ report.category|escape }}"
+                data-status="{{ report.status|escape }}"
+                data-visited="{{ report.visitedProperty }}"
+                data-acknowledged="{{ report.acknowledged }}"
+                data-reason="{{ report.reason|escape }}"
+                data-evidence="{% for url in report.evidenceUrls %}{{ url|escape }}{% if not forloop.last %}||{% endif %}{% endfor %}"
+              >Review</button>
+            </div>
+          {% empty %}
+            <p class="empty">No fraud reports submitted yet</p>
+          {% endfor %}
+        </article>
+      </section>
+    {% elif active_tab == 'listings' %}
+      <section class="cards">
+        {% for card in summary_cards %}
+          <article class="card stat-card">
+            <div class="value">{{ card.value }}</div>
+            <div class="label">{{ card.label }}</div>
+            <div class="sub">{{ card.sublabel }}</div>
+          </article>
+        {% endfor %}
+      </section>
+
+      <section class="panel listing-browser">
+        <div class="panel-header">
+          <h2>Listings</h2>
+          <span>Search by landlord email</span>
+        </div>
+        <form class="search-form" method="get">
+          <input type="hidden" name="tab" value="listings">
+          <input name="email" value="{{ search_email }}" placeholder="Search by email" />
+          <button type="submit">Search</button>
+        </form>
+
+        {% for landlord in landlord_search_data %}
+          <div class="landlord-card">
+            <div class="landlord-top">
+              <div>
+                <strong>{{ landlord.name }}</strong>
+                <p>{{ landlord.email }}{% if landlord.phone %} · {{ landlord.phone }}{% endif %}</p>
+                <small>{% if landlord.verified %}Verified{% else %}Pending{% endif %}</small>
+              </div>
+              <div><small>{{ landlord.listings|length }} properties</small></div>
+            </div>
+            <div class="listing-list">
+              {% for listing in landlord.listings %}
+                <div class="listing-row">
+                  <div>
+                    <strong>{{ listing.title }}</strong>
+                    <p>{{ listing.address }}</p>
+                    <small>KES {{ listing.price|floatformat:0 }} · Status: {{ listing.status }}</small>
+                    {% if listing.status == 'inactive' %}
+                      <p class="status-note suspended">This listing is suspended</p>
+                    {% else %}
+                      <p class="status-note active">This listing is active</p>
+                    {% endif %}
+                  </div>
+                  <div class="actions">
+                    <form method="post" action="{% url 'admin_toggle_listing_status' listing.id %}">{% csrf_token %}
+                      {% if listing.status == 'inactive' %}
+                        <button class="success">Unsuspend</button>
+                      {% else %}
+                        <button class="danger">Suspend</button>
+                      {% endif %}
+                    </form>
+                    <form method="post" action="{% url 'admin_delete_listing' listing.id %}">{% csrf_token %}<button>Delete property</button></form>
+                  </div>
+                </div>
+              {% empty %}
+                <p class="empty">No listings found for this landlord.</p>
+              {% endfor %}
+            </div>
+          </div>
+        {% empty %}
+          <p class="empty">No landlords match your search.</p>
+        {% endfor %}
+      </section>
+    {% elif active_tab == 'payments' %}
+      <section class="cards">
+        <article class="card stat-card"><div class="value">{{ payments_summary.total }}</div><div class="label">Total Payments</div><div class="sub">All time records</div></article>
+        <article class="card stat-card"><div class="value">{{ payments_summary.successful }}</div><div class="label">Successful</div><div class="sub">Completed payments</div></article>
+        <article class="card stat-card"><div class="value">{{ payments_summary.pending }}</div><div class="label">Pending</div><div class="sub">Awaiting confirmation</div></article>
+        <article class="card stat-card"><div class="value">{{ payments_summary.failed }}</div><div class="label">Failed</div><div class="sub">Cancelled or failed</div></article>
+      </section>
+
+      <section class="panel payment-browser">
+        <div class="panel-header">
+          <h2>Payments</h2>
+          <span>Total amount: KES {{ payments_summary.amount_total|floatformat:0 }}</span>
+        </div>
+        <div class="payment-table">
+          <div class="payment-head">
+            <span>Payer</span><span>Listing</span><span>Purpose</span><span>Amount</span><span>Status</span><span>Refs</span>
+          </div>
+          {% for payment in payment_rows %}
+            <div class="payment-row">
+              <div>
+                <strong>{{ payment.user.name }}</strong>
+                <p>{{ payment.user.email }}</p>
+                <small>{{ payment.user.phone }}</small>
+              </div>
+              <div>
+                <strong>{{ payment.listing.title|default:'No listing' }}</strong>
+                <p>{{ payment.listing.address|default:'No address' }}</p>
+                <small>{{ payment.listing.landlord|default:'No landlord' }}</small>
+              </div>
+              <div>
+                <strong>{{ payment.purpose }}</strong>
+                <p>Initiated {{ payment.initiatedAt|default:'-' }}</p>
+              </div>
+              <div>
+                <strong>KES {{ payment.amount|floatformat:0 }}</strong>
+                <p>{{ payment.transactionDesc|default:'No description' }}</p>
+              </div>
+              <div><span class="status-pill status-{{ payment.status|lower }}">{{ payment.status }}</span></div>
+              <div class="refs">
+                <small>Ref: {{ payment.mpesaReference|default:'-' }}</small>
+                <small>Checkout: {{ payment.checkoutRequestId|default:'-' }}</small>
+                <small>Merchant: {{ payment.merchantRequestId|default:'-' }}</small>
+              </div>
+            </div>
+          {% empty %}
+            <p class="empty">No payments found.</p>
+          {% endfor %}
+        </div>
+      </section>
+    {% else %}
+      <section class="cards">
+        {% for card in summary_cards %}
+          <article class="card stat-card">
+            <div class="value">{{ card.value }}</div>
+            <div class="label">{{ card.label }}</div>
+            <div class="sub">{{ card.sublabel }}</div>
+          </article>
+        {% endfor %}
+      </section>
+    {% endif %}
+  </main>
+</div>
+
+<div class="modal-backdrop" id="report-modal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">Fraud Report Review</p>
+        <h3 id="modal-title"></h3>
+      </div>
+      <button type="button" class="close-btn" id="close-modal">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <section class="modal-section">
+          <h4>Listing</h4>
+          <p id="modal-listing-address"></p>
+          <p id="modal-listing-price"></p>
+          <p id="modal-listing-status"></p>
+          <p id="modal-listing-landlord"></p>
+        </section>
+        <section class="modal-section">
+          <h4>Reporter</h4>
+          <p id="modal-reporter-name"></p>
+          <p id="modal-reporter-email"></p>
+          <p id="modal-reporter-phone"></p>
+        </section>
+        <section class="modal-section full">
+          <h4>Report Details</h4>
+          <p id="modal-category"></p>
+          <p id="modal-status"></p>
+          <p id="modal-visited"></p>
+          <p id="modal-acknowledged"></p>
+          <p id="modal-reason"></p>
+          <div class="evidence-block">
+            <p class="evidence-label">Evidence</p>
+            <div class="evidence-list" id="modal-evidence"></div>
+          </div>
+        </section>
+      </div>
+      <div class="modal-actions">
+        <form method="post" id="reject-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="reject-report">
+          <button type="submit">Reject report</button>
+        </form>
+        <form method="post" id="suspend-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="suspend-listing">
+          <button type="submit" class="danger">Suspend listing</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('report-modal');
+  const closeModal = document.getElementById('close-modal');
+  const reviewButtons = document.querySelectorAll('.review-btn');
+  const rejectForm = document.getElementById('reject-form');
+  const suspendForm = document.getElementById('suspend-form');
+
+  const nodes = {
+    title: document.getElementById('modal-title'),
+    listingAddress: document.getElementById('modal-listing-address'),
+    listingPrice: document.getElementById('modal-listing-price'),
+    listingStatus: document.getElementById('modal-listing-status'),
+    listingLandlord: document.getElementById('modal-listing-landlord'),
+    reporterName: document.getElementById('modal-reporter-name'),
+    reporterEmail: document.getElementById('modal-reporter-email'),
+    reporterPhone: document.getElementById('modal-reporter-phone'),
+    category: document.getElementById('modal-category'),
+    status: document.getElementById('modal-status'),
+    visited: document.getElementById('modal-visited'),
+    acknowledged: document.getElementById('modal-acknowledged'),
+    reason: document.getElementById('modal-reason'),
+    evidence: document.getElementById('modal-evidence'),
+  };
+
+  function openModal(report) {
+    nodes.title.textContent = report.title;
+    nodes.listingAddress.textContent = 'Address: ' + report.address;
+    nodes.listingPrice.textContent = 'Price: KES ' + Number(report.price).toLocaleString();
+    nodes.listingStatus.textContent = 'Listing status: ' + report.listingStatus;
+    nodes.listingLandlord.textContent = 'Landlord: ' + report.landlordName + ' (' + report.landlordEmail + ')';
+    nodes.reporterName.textContent = 'Reporter: ' + report.reporterName;
+    nodes.reporterEmail.textContent = 'Email: ' + report.reporterEmail;
+    nodes.reporterPhone.textContent = 'Phone: ' + report.reporterPhone;
+    nodes.category.textContent = 'Category: ' + report.category;
+    nodes.status.textContent = 'Report status: ' + report.status;
+    nodes.visited.textContent = 'Visited property: ' + (report.visited === 'True' ? 'Yes' : 'No');
+    nodes.acknowledged.textContent = 'Acknowledged: ' + (report.acknowledged === 'True' ? 'Yes' : 'No');
+    nodes.reason.textContent = 'Reason: ' + report.reason;
+    nodes.evidence.innerHTML = '';
+    const evidenceUrls = (report.evidenceUrls || '').split('||').filter(Boolean);
+    if (evidenceUrls.length === 0) {
+      nodes.evidence.innerHTML = '<p class="empty-inline">No evidence attached.</p>';
+    } else {
+      evidenceUrls.forEach((url, index) => {
+        const item = document.createElement('a');
+        item.href = url;
+        item.target = '_blank';
+        item.rel = 'noreferrer';
+        item.className = 'evidence-item';
+        item.textContent = `Evidence ${index + 1}`;
+        nodes.evidence.appendChild(item);
+      });
+    }
+    rejectForm.action = '/reports/' + report.id + '/moderate/';
+    suspendForm.action = '/reports/' + report.id + '/moderate/';
+    modal.hidden = false;
+  }
+
+  reviewButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      openModal({
+        id: button.dataset.id,
+        title: button.dataset.title,
+        address: button.dataset.address,
+        price: button.dataset.price,
+        listingStatus: button.dataset.listingStatus,
+        landlordName: button.dataset.landlordName,
+        landlordEmail: button.dataset.landlordEmail,
+        reporterName: button.dataset.reporterName,
+        reporterEmail: button.dataset.reporterEmail,
+        reporterPhone: button.dataset.reporterPhone,
+        category: button.dataset.category,
+        status: button.dataset.status,
+        visited: button.dataset.visited,
+        acknowledged: button.dataset.acknowledged,
+        reason: button.dataset.reason,
+        evidenceUrls: button.dataset.evidence,
+      });
+    });
+  });
+
+  closeModal?.addEventListener('click', () => { modal.hidden = true; });
+  modal?.addEventListener('click', (event) => { if (event.target === modal) modal.hidden = true; });
+</script>
+{% endblock %}

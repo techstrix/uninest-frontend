@@ -5,6 +5,7 @@ import { useSignUp } from "@clerk/nextjs/legacy";
 import { useRouter } from "next/navigation";
 import {toast} from "sonner"
 import Link from "next/link";
+import { UniNestWordmark } from "@/components/brand/uninest-wordmark";
 
 export default function VerifyEmail() {
   const [email, setEmail] = useState("");
@@ -84,9 +85,7 @@ export default function VerifyEmail() {
         <div className="absolute top-0 left-0 w-[250px] h-[80px] bg-[#3d7a65] opacity-50 blur-[40px] rounded-full" />
 
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold italic mb-12 tracking-tight">
-            <span className="text-emerald-200">Uni</span>Nest
-          </h1>
+          <UniNestWordmark className="mb-12 text-2xl" />
 
           <h2 className="text-[1.5rem] font-bold leading-[1.2] mb-3 max-w-[320px]">
             Find housing near your campus — verified, ranked by distance.
@@ -162,7 +161,7 @@ export default function VerifyEmail() {
 
           {/* Resend Code Section */}
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
+              <p className="text-sm text-gray-600 mb-2">Didn&apos;t receive the code?</p>
             <button
               type="button"
               className="text-sm font-semibold text-[#1a3c34] hover:text-[#15332c] transition"

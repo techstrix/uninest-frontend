@@ -3,25 +3,17 @@
   "middleware": {
     "/": {
       "files": [
-        "server/edge/chunks/node_modules_next_dist_fd25b1f6._.js",
-        "server/edge/chunks/node_modules_@auth_core_544da84f._.js",
-        "server/edge/chunks/node_modules_jose_dist_webapi_1151dcae._.js",
-        "server/edge/chunks/node_modules_@prisma_client_386a77d1._.js",
-        "server/edge/chunks/_25390fd3._.js",
-        "server/edge/chunks/[root-of-the-server]__81687e43._.js",
-        "server/edge/chunks/turbopack-node_modules_next_dist_esm_build_templates_edge-wrapper_65f526f7.js"
+        "server/edge/chunks/876cc_next_dist_1e327de0._.js",
+        "server/edge/chunks/876cc_@auth_core_7e67d621._.js",
+        "server/edge/chunks/876cc_jose_dist_webapi_53ccb49d._.js",
+        "server/edge/chunks/876cc_@prisma_client_c42cfe5d._.js",
+        "server/edge/chunks/Documents_second-year-project_uninest_a68cc05a._.js",
+        "server/edge/chunks/[root-of-the-server]__0c8f6b06._.js",
+        "server/edge/chunks/94fbc_next_dist_esm_build_templates_edge-wrapper_4b8d1e16.js"
       ],
       "name": "middleware",
       "page": "/",
       "matchers": [
-        {
-          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/(\\/?index|\\/?index\\\\.json))?[\\/#\\?]?$",
-          "originalSource": "/"
-        },
-        {
-          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/sign-in(\\\\.json)?[\\/#\\?]?$",
-          "originalSource": "/sign-in"
-        },
         {
           "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/((?!api|_next|favicon.ico).*))(\\\\.json)?[\\/#\\?]?$",
           "originalSource": "/((?!api|_next|favicon.ico).*)"
@@ -30,16 +22,16 @@
       "wasm": [
         {
           "name": "wasm_5a068545d9451d84",
-          "filePath": "server/edge/chunks/node_modules__prisma_client_query_compiler_fast_bg_23ace1ce.wasm"
+          "filePath": "server/edge/chunks/876cc__prisma_client_query_compiler_fast_bg_23ace1ce.wasm"
         }
       ],
       "assets": [],
       "env": {
         "__NEXT_BUILD_ID": "development",
         "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "Qpuj5am+gqwyYC7jEEzOzBR3+ubiL0TYxys8tCR6y84=",
-        "__NEXT_PREVIEW_MODE_ID": "94a9b28f5c6eba98e502b2774c0cbd4f",
-        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "bc5aeb016b8df1e92642782fae54a316a947a5a3292b8fa13c5aa371da80b94d",
-        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "e4b3c9b58ec691cc3ab98868fcecd7cafc626eb0c4a7c64830fb0910bad242c3"
+        "__NEXT_PREVIEW_MODE_ID": "186d8128c24a5897d68da3a0a9ba0517",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "debcb6b1a74a29345e35127ae2144c0ecc54293c9b41234b1857d1b5a27aa188",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "25e4ea7f3a4e172ed5dd6582c95aa8af372ba5855f1b2b338c90ef54a35ac6c4"
       }
     }
   },

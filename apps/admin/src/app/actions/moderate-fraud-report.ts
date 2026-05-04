@@ -4,8 +4,7 @@ import { Resend } from "resend"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 
-//TODO:Fix here Very dang but I will fix later since for some reason I cant figure out how to use envs cor vzr.
-const resendApiKey = "re_b8wkZsth_CkeSbiqhC14g99kUq3vf6RSt"
+const resendApiKey = process.env.RESEND_API_KEY
 const resend = resendApiKey ? new Resend(resendApiKey) : null
 const fromEmail = "onboarding@resend.dev"
 

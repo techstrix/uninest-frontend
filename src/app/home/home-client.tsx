@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { toast } from "sonner"
 import Image from "next/image"
+import { UniNestWordmark } from "@/components/brand/uninest-wordmark"
 
 const campuses = ["All Campuses", "Main Campus", "Chiromo Campus", "Parklands Campus"]
 const filters = ["All types", "Bedsitter", "1 Bedroom", "2 Bedroom", { label: "KES 4K - 15K"}]
@@ -15,6 +16,7 @@ type Listing = {
   id: string
   title: string
   address: string
+  status: string
   bedroomType: string | null
   amenities: string[]
   price: number
@@ -66,6 +68,7 @@ const getBeds = (bedroomType: string | null) => {
 
 const filterListings = (listings: Listing[],search:string, campus: string, typeFilter: string, priceRange: boolean) => {
   return listings.filter((listing) => {
+    if (listing.status === "inactive") return false
     const nearestCampus = getNearestCampusDistance(listing)
     const matchesCampus = campus === "All Campuses" ? true : nearestCampus?.campus === campus
     let matchesType = true
@@ -117,7 +120,7 @@ export default function HomeClient() {
         }
 
         const data = await response.json()
-        setListings(data.listings)
+        setListings((data.listings ?? []).filter((listing: Listing) => listing.status !== "inactive"))
 
       } catch (error) {
         console.error("Failed to load listings", error)
@@ -204,11 +207,9 @@ export default function HomeClient() {
       <header className="bg-[#204038] ">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
-            <h1 className="text-xl font-bold ">
-              <Link href="/home" >
-                <span className="text-emerald-700">Uni</span><span className="text-white">Nest</span>
+              <Link href="/home" aria-label="UniNest home">
+                <UniNestWordmark className="text-xl" accentClassName="text-emerald-700" textClassName="text-white" />
               </Link>
-            </h1>
             <nav className="flex items-center gap-6">
               <div className="relative">
                 <button 

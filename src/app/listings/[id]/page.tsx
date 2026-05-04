@@ -1,5 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
+import { UniNestWordmark } from "@/components/brand/uninest-wordmark"
 import { notFound } from "next/navigation"
 import { MapPin, ShieldCheck, Mail, Phone } from "lucide-react"
 import { prisma } from "@/lib/prisma"
@@ -22,33 +23,54 @@ export default async function ListingDetailsPage({ params }: PageProps) {
 
   const listing = await prisma.listing.findUnique({
     where: { id },
-    include: {
-      photos: {
-        orderBy: {
-          displayOrder: "asc",
-        },
+        include: {
+          photos: {
+            orderBy: {
+              displayOrder: "asc",
+            },
       },
       reviews: {
         select: {
           rating: true,
         },
       },
-      landlord: {
-        include: {
-          user: {
-            select: {
-              firstName: true,
-              lastName: true,
-              phone: true,
+          landlord: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                  email: true,
+                },
+              },
             },
           },
-        },
-      },
     },
   })
 
   if (!listing) {
     notFound()
+  }
+
+  if (listing.status === "inactive") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f4f6] px-4">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-500">Listing Suspended</p>
+          <h1 className="mt-3 text-2xl font-bold text-gray-900">This listing is currently suspended</h1>
+          <p className="mt-3 text-sm leading-6 text-gray-600">
+            The listing is unavailable right now. Please return home to browse other active listings.
+          </p>
+          <Link
+            href="/home"
+            className="mt-6 inline-flex items-center justify-center rounded-lg bg-[#184f43] px-5 py-3 text-sm font-semibold text-white hover:bg-[#153f36]"
+          >
+            Go home
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   const distances = [
@@ -75,6 +97,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
       : null
 
   const landlordName = `${listing.landlord.user.firstName ?? ""} ${listing.landlord.user.lastName ?? ""}`.trim() || "Landlord"
+  const landlordEmail = listing.landlord.user.email ?? "Not shared"
   const initials = landlordName
     .split(" ")
     .filter(Boolean)
@@ -108,8 +131,8 @@ export default async function ListingDetailsPage({ params }: PageProps) {
       <ViewTracker listingId={listing.id} />
       <header className="bg-[#184f43] text-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/home" className="text-2xl font-bold italic tracking-tight">
-            <span className="text-emerald-200">Uni</span>Nest
+          <Link href="/home" aria-label="UniNest home">
+            <UniNestWordmark className="text-2xl" />
           </Link>
           <Link href="/home" className="text-sm font-semibold text-emerald-100 hover:text-white">
             ← Back to results
@@ -267,7 +290,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Email</p>
                 <p className="mt-1 inline-flex items-center gap-2 text-[#184f43] font-semibold">
                   <Mail className="h-4 w-4" />
-                  {listing.landlord.user.firstName ? `${listing.landlord.user.firstName}.${listing.landlord.user.lastName ?? ""}@contact.uninest` : "Request via phone"}
+                  {landlordEmail}
                 </p>
               </div>
 
@@ -284,7 +307,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
             </p>
             <Link
               href={`/fraud-report?listingId=${listing.id}`}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#fb8a3c] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#f07a2f]"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-[#dc2626] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#b91c1c]"
             >
               Report this listing
             </Link>

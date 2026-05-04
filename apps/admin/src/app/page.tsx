@@ -3,12 +3,7 @@ import { redirect } from "next/navigation"
 import ProfileMenu from "./components/profile-menu"
 import { prisma } from "@/lib/prisma"
 import { FraudReportsPanel, type AdminFraudReport } from "./components/profile-menu"
-
-const pendingVerifications = [
-  { initials: "MO", name: "Mary Otieno", item: "National ID", when: "uploaded · 2 hrs ago" },
-  { initials: "JN", name: "James Njoroge", item: "Passport", when: "uploaded · 5 hrs ago" },
-  { initials: "AW", name: "Amina Wanjiku", item: "National ID", when: "uploaded · 1 day ago" },
-]
+import LandlordListingsManager from "./components/landlord-search-panel"
 
 const recentRegistrations = [
   {
@@ -118,11 +113,57 @@ export default async function AdminHomePage() {
     }
   })
 
+  const landlords = await prisma.landlordProfile.findMany({
+    orderBy: { user: { createdAt: "desc" } },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          username: true,
+          email: true,
+          phone: true,
+          createdAt: true,
+        },
+      },
+      listings: {
+        select: {
+          id: true,
+          title: true,
+          address: true,
+          price: true,
+          status: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  })
+
+  const landlordSearchData = landlords.map((item) => ({
+    id: item.id,
+    userId: item.userId,
+    name: `${item.user.firstName ?? ""} ${item.user.lastName ?? ""}`.trim() || item.user.username || "Landlord",
+    username: item.user.username,
+    email: item.user.email,
+    phone: item.user.phone,
+    verified: item.isLandlordVerified,
+    trustScore: item.trustScore,
+    listings: item.listings.map((listing) => ({
+      id: listing.id,
+      title: listing.title,
+      address: listing.address,
+      price: Number(listing.price),
+      status: listing.status,
+    })),
+  }))
+
   const summaryCards = [
     { value: "142", label: "Total Users", sublabel: "+8 this week", tone: "text-slate-900" },
     { value: "67", label: "Active Listings", sublabel: "+5 today", tone: "text-slate-900" },
-    { value: "4", label: "Pending Verifications", sublabel: "Needs review", tone: "text-amber-500" },
     { value: String(openReportsCount), label: "Open Reports", sublabel: "Needs action", tone: "text-red-500" },
+    { value: "18", label: "Landlords", sublabel: "Managed accounts", tone: "text-slate-900" },
   ]
 
   return (
@@ -138,20 +179,19 @@ export default async function AdminHomePage() {
 
           <div className="px-4 pt-5">
             <p className="px-2 text-[10px] font-bold uppercase tracking-[0.22em] text-white/40">Overview</p>
-            <nav className="mt-2 space-y-1">
-              <SidebarItem label="Dashboard" active />
-              <SidebarItem label="Verifications" badge="4" />
-              <SidebarItem label="Reports" badge={String(openReportsCount)} />
-            </nav>
+              <nav className="mt-2 space-y-1">
+                <SidebarItem label="Dashboard" active />
+                <SidebarItem label="Reports" badge={String(openReportsCount)} />
+              </nav>
           </div>
 
           <div className="mt-6 px-4">
             <p className="px-2 text-[10px] font-bold uppercase tracking-[0.22em] text-white/40">Manage</p>
-            <nav className="mt-2 space-y-1">
-              <SidebarItem label="Users" />
-              <SidebarItem label="Listings" />
-              <SidebarItem label="Payments" />
-            </nav>
+              <nav className="mt-2 space-y-1">
+                <SidebarItem label="Users" />
+                <SidebarItem label="Listings" />
+                <SidebarItem label="Payments" />
+              </nav>
           </div>
 
           <div className="mt-auto border-t border-white/10 px-4 py-4">
@@ -184,37 +224,20 @@ export default async function AdminHomePage() {
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                  <h2 className="text-sm font-bold text-slate-900">Pending ID Verifications</h2>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">4 pending</span>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {pendingVerifications.map((item) => (
-                    <div key={item.name} className="flex items-center gap-3 px-4 py-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-500 text-xs font-bold text-white">{item.initials}</div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-slate-900">{item.name}</p>
-                        <p className="text-xs text-slate-500">{item.item}</p>
-                        <p className="text-xs text-slate-400">{item.when}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="rounded bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Approve</button>
-                        <button className="rounded bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Reject</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
                   <h2 className="text-sm font-bold text-slate-900">Open Fraud Reports</h2>
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">{openReportsCount} open</span>
                 </div>
                 <FraudReportsPanel reports={fraudReports} />
               </article>
-            </section>
 
- 
+              <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm xl:col-span-2">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                  <h2 className="text-sm font-bold text-slate-900">Listings</h2>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">Landlord search</span>
+                </div>
+                <LandlordListingsManager landlords={landlordSearchData} />
+              </article>
+            </section>
           </div>
         </main>
       </div>

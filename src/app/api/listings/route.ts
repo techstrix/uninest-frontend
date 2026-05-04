@@ -24,17 +24,18 @@ export async function GET(request: Request) {
         return Response.json({ error: "Listing not found" }, { status: 404 })
       }
 
-      return Response.json(
-        {
-          listing: {
-            id: listing.id,
-            title: listing.title,
-            address: listing.address,
-            price: Number(listing.price),
-            photoUrl: listing.photos[0]?.photoUrl ?? null,
+        return Response.json(
+          {
+            listing: {
+              id: listing.id,
+              title: listing.title,
+              address: listing.address,
+              price: Number(listing.price),
+              status: listing.status,
+              photoUrl: listing.photos[0]?.photoUrl ?? null,
+            },
           },
-        },
-        { status: 200 },
+          { status: 200 },
       )
     }
 
@@ -70,6 +71,7 @@ export async function GET(request: Request) {
         id: listing.id,
         title: listing.title,
         address: listing.address,
+        status: listing.status,
         bedroomType: listing.bedroomType,
         amenities: Array.isArray(listing.amenities) ? listing.amenities : [],
         price: Number(listing.price),
@@ -129,6 +131,15 @@ export async function POST(req: Request) {
 
   if (!landlord) {
     return new Response("Not a landlord", { status: 403 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { phone: true },
+  });
+
+  if (!user?.phone?.trim()) {
+    return new Response("Phone verification required before posting listings", { status: 403 });
   }
 
   const payment = await prisma.payment.findFirst({

@@ -1,10 +1,12 @@
 import Link from "next/link"
+import { UniNestWordmark } from "@/components/brand/uninest-wordmark"
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { Bell, Sparkles } from "lucide-react"
 import ListingsManager, { type DashboardListing } from "./listings-manager"
 import ProfileMenu from "./profile-menu"
+import PhoneVerificationReminder from "@/components/phone-verification-reminder"
 
 type ListingCard = DashboardListing & {
   id: string
@@ -81,6 +83,7 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
           firstName: true,
           lastName: true,
           profilePhoto: true,
+          phone: true,
         },
       },
       listings: {
@@ -174,13 +177,14 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
 
   const trustScore = profileData.trustScore
   const email = clerkUser.primaryEmailAddress?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress ?? ""
+  const linkedPhone = profileData.user.phone ?? null
 
   return (
     <div className="min-h-screen bg-[#f5f7fa] text-slate-900">
       <div className="flex min-h-screen">
         <aside className="hidden w-65 shrink-0 flex-col border-r border-white/10 bg-[#1f5a48] text-white lg:flex">
-          <div className="px-5 py-6 text-2xl font-bold italic tracking-tight">
-            <span className="text-emerald-200">Uni</span>Nest
+          <div className="px-5 py-6">
+            <UniNestWordmark className="text-2xl" />
           </div>
 
           <div className="mt-auto border-t border-white/10 px-4 py-5">
@@ -212,6 +216,7 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
           </header>
 
           <div className="mx-auto max-w-310 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            <PhoneVerificationReminder phoneNumber={linkedPhone} />
             <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <SummaryCard value={String(activeListings.length)} label="Active Listings" sublabel="All live" />
               <SummaryCard value={String(totalViews)} label="Total Views" sublabel="This week" />

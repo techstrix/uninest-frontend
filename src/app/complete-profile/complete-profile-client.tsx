@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { GraduationCap, Building2, ArrowRight } from "lucide-react";
+import { UniNestWordmark } from "@/components/brand/uninest-wordmark";
 
 export default function CompleteProfileClient() {
   const [role, setRole] = useState<'student' | 'landlord'>('student');
@@ -43,9 +44,7 @@ export default function CompleteProfileClient() {
         <div className="absolute top-0 left-0 w-62.5 h-20 bg-[#3d7a65] opacity-50 blur-2xl rounded-full" />
 
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold italic mb-12 tracking-tight">
-            <span className="text-emerald-200">Uni</span>Nest
-          </h1>
+          <UniNestWordmark className="mb-12 text-2xl" />
 
           <h2 className="text-[1.5rem] font-bold leading-[1.2] mb-3 max-w-[320px]">
             Complete your profile to get started

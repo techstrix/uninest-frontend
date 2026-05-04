@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { toast } from "sonner";
+import { UniNestWordmark } from "@/components/brand/uninest-wordmark";
 
 export default function SignUpClient() {
   const { isLoaded, signUp } = useSignUp();
@@ -68,7 +69,7 @@ export default function SignUpClient() {
         <div className="absolute top-0 left-0 w-[250px] h-[80px] bg-[#3d7a65] opacity-50 blur-[40px] rounded-full" />
 
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold italic mb-12 tracking-tight"><span className="text-emerald-200">Uni</span>Nest</h1>
+          <UniNestWordmark className="mb-12 text-2xl" />
           <h2 className="text-[1.5rem] font-bold leading-[1.2] mb-3 max-w-[320px]">Find housing near your campus — verified, ranked by distance.</h2>
           <p className="text-[#a3c4b8] text-[13px] leading-relaxed max-w-[320px]">Purpose-built for University of Nairobi students and landlords in the estates around campus.</p>
         </div>

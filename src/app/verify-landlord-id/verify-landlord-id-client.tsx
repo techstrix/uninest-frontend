@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ShieldCheck, Loader2, ArrowRight } from "lucide-react"
+import { UniNestWordmark } from "@/components/brand/uninest-wordmark"
 
 export default function VerifyLandlordIdClient() {
   const [isLoading, setIsLoading] = useState(false)
@@ -47,9 +48,7 @@ export default function VerifyLandlordIdClient() {
         <div className="absolute top-0 left-0 w-[250px] h-[80px] bg-[#3d7a65] opacity-50 blur-[40px] rounded-full" />
 
         <div className="relative z-10">
-          <h1 className="text-2xl font-bold italic mb-12 tracking-tight">
-            <span className="text-emerald-200">Uni</span>Nest
-          </h1>
+          <UniNestWordmark className="mb-12 text-2xl" />
 
           <h2 className="text-[1.5rem] font-bold leading-[1.2] mb-3 max-w-[320px]">
             Continue to identity verification.

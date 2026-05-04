@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="auth-shell">
+  <section class="auth-hero">
+    <h1><span>Uni</span>Nest</h1>
+    <h2>Admin dashboard access.</h2>
+    <p>Use your admin username/email and password to continue.</p>
+  </section>
+  <section class="auth-panel">
+    <div class="card">
+      <h2>Welcome back</h2>
+      <p>Sign in to the admin dashboard</p>
+      {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors }}</div>{% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <label>Email or username</label>
+        {{ form.identifier }}
+        <label>Password</label>
+        {{ form.password }}
+        {% if form.errors %}<div class="error">Invalid credentials or inactive admin account.</div>{% endif %}
+        <button type="submit">Sign In</button>
+      </form>
+      <p class="subtle"><a href="{% url 'admin_sign_up' %}">Create account</a></p>
+    </div>
+  </section>
+</div>
+{% endblock %}

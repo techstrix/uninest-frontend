@@ -1,0 +1,28 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<div class="auth-shell">
+  <section class="auth-hero">
+    <h1><span>Uni</span>Nest</h1>
+    <h2>Create admin access.</h2>
+    <p>Sign up for a new admin account.</p>
+  </section>
+  <section class="auth-panel">
+    <div class="card">
+      <h2>Create account</h2>
+      <p>Register a new admin account</p>
+      {% if form.non_field_errors %}<div class="error">{{ form.non_field_errors }}</div>{% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <label>Username</label>
+        {{ form.username }}
+        <label>Email</label>
+        {{ form.email }}
+        <label>Password</label>
+        {{ form.password }}
+        <button type="submit">Create account</button>
+      </form>
+      <p class="subtle"><a href="{% url 'admin_sign_in' %}">Back to sign in</a></p>
+    </div>
+  </section>
+</div>
+{% endblock %}
