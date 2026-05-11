@@ -2,20 +2,14 @@
   "name": "uninest",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*"
-  ],
+  
   "scripts": {
     "dev": "next dev",
     "dev:web": "next dev",
-    "dev:admin": "npm run dev --workspace=apps/admin",
     "build": "next build",
     "build:web": "next build",
-    "build:admin": "npm run build --workspace=apps/admin",
     "start": "next start",
     "start:web": "next start",
-    "start:admin": "npm run start --workspace=apps/admin",
-    "admin:cli": "npm run cli --workspace=apps/admin --",
     "lint": "eslint"
   },
   "dependencies": {
