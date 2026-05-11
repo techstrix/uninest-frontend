@@ -106,6 +106,10 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
     },
   })
 
+  if (!profileData) {
+    redirect("/complete-profile")
+  }
+
   const listingIds = profileData.listings.map((listing) => listing.id)
   const listingViewCountById = new Map<string, number>()
 
@@ -220,7 +224,6 @@ export default async function LandlordDashboardPage({ searchParams }: DashboardP
             <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <SummaryCard value={String(activeListings.length)} label="Active Listings" sublabel="All live" />
               <SummaryCard value={String(totalViews)} label="Total Views" sublabel="This week" />
-              <SummaryCard value={String(unreadMessages)} label="Enquiries" sublabel="3 unread" />
             </section>
 
             {activeTab === "listings" ? (

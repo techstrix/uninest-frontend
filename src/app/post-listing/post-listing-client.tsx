@@ -16,6 +16,9 @@ const amenities = [
   "CCTV/Guard",
   "Instant Hot Shower",
   "Balcony",
+  "Furnished",
+  "Kitchenette",
+  
 ];
 
 type BedroomType = "BEDSITTER" | "ONE_BEDROOM" | "TWO_BEDROOM" | "THREE_BEDROOM";
@@ -230,6 +233,9 @@ function validateDraft(draft: PostListingDraft): FormErrors {
 export default function PostListingClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPhotoCount, setSelectedPhotoCount] = useState(0);
+  const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [selectedPhotoPreviews, setSelectedPhotoPreviews] = useState<Array<{ key: string; name: string; url: string }>>([]);
+  const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -250,6 +256,7 @@ export default function PostListingClient() {
   const [activeStep, setActiveStep] = useState<ListingStepKey>("basics");
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const sectionRefs = useRef<Record<ListingStepKey, HTMLElement | null>>({
     basics: null,
     location: null,
@@ -315,6 +322,53 @@ export default function PostListingClient() {
       delete next[key];
       return next;
     });
+  };
+
+  useEffect(() => {
+    const nextPreviews = selectedPhotos.map((photo) => ({
+      key: `${photo.name}-${photo.size}-${photo.lastModified}`,
+      name: photo.name,
+      url: URL.createObjectURL(photo),
+    }));
+
+    setSelectedPhotoPreviews(nextPreviews);
+
+    return () => {
+      nextPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [selectedPhotos]);
+
+  const setPhotoFiles = (files: File[]) => {
+    const dataTransfer = new DataTransfer();
+
+    files.slice(0, 5).forEach((file) => dataTransfer.items.add(file));
+
+    if (photoInputRef.current) {
+      photoInputRef.current.files = dataTransfer.files;
+    }
+
+    setSelectedPhotoCount(dataTransfer.files.length);
+    setSelectedPhotos(Array.from(dataTransfer.files));
+    clearError("photos");
+  };
+
+  const syncPhotoFiles = (files: FileList | File[]) => {
+    const incomingFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    const existingFiles = selectedPhotos;
+    const mergedFiles = [...existingFiles, ...incomingFiles].filter(
+      (file, index, all) => all.findIndex((current) => current.name === file.name && current.size === file.size && current.lastModified === file.lastModified) === index,
+    );
+
+    setPhotoFiles(mergedFiles);
+  };
+
+  const openPhotoPicker = () => {
+    photoInputRef.current?.click();
+  };
+
+  const removePhotoAtIndex = (index: number) => {
+    const nextPhotos = selectedPhotos.filter((_, currentIndex) => currentIndex !== index);
+    setPhotoFiles(nextPhotos);
   };
 
   const handleGetLocation = async () => {
@@ -770,7 +824,7 @@ export default function PostListingClient() {
                         id="bedroomType"
                         name="bedroomType"
                         defaultValue=""
-                        required
+                      
                         onChange={() => clearError("bedroomType")}
                         className={getInputClassName(Boolean(errors.bedroomType))}
                       >
@@ -851,10 +905,39 @@ export default function PostListingClient() {
                 <StepHeading label="Step 3" title="Property photos" description="Listings with at least 4 photos receive 3x more student inquiries. Show the room, bathroom, kitchen, and compound." />
 
                 <div className="space-y-4">
-                  <label
-                    htmlFor="photos"
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onDragEnter={(event) => {
+                      event.preventDefault();
+                      setIsDraggingPhotos(true);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setIsDraggingPhotos(true);
+                    }}
+                    onDragLeave={(event) => {
+                      event.preventDefault();
+                      setIsDraggingPhotos(false);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      setIsDraggingPhotos(false);
+                      syncPhotoFiles(event.dataTransfer.files);
+                    }}
+                    onClick={openPhotoPicker}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openPhotoPicker();
+                      }
+                    }}
                     className={`flex min-h-[260px] cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed px-6 py-10 text-center transition ${
-                      errors.photos ? "border-[#dc2626] bg-[#fff8f8]" : "border-[#d9d1c3] bg-[#ede7d9]"
+                      errors.photos
+                        ? "border-[#dc2626] bg-[#fff8f8]"
+                        : isDraggingPhotos
+                          ? "border-[#1f5a48] bg-[#f4faf8]"
+                          : "border-[#d9d1c3] bg-[#ede7d9]"
                     }`}
                   >
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#d9d6c9] text-[#1f5a48]">
@@ -863,8 +946,20 @@ export default function PostListingClient() {
                     <div className="mt-5 text-[17px] font-semibold text-[#2a2f2b]">Drop photos here or click to browse</div>
                     <div className="mt-1 text-sm text-[#78746a]">JPG, PNG or WEBP · Max 10MB per photo</div>
                     <div className="mt-4 rounded-full bg-[#d9e6dc] px-3 py-1 text-xs font-semibold text-[#1f5a48]">Minimum 1 photo required</div>
-                  </label>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openPhotoPicker();
+                      }}
+                      className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-[#1f5a48] px-5 text-sm font-semibold text-white transition hover:bg-[#184738]"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Browse files
+                    </button>
+                  </div>
                   <input
+                    ref={photoInputRef}
                     id="photos"
                     name="photos"
                     type="file"
@@ -872,14 +967,33 @@ export default function PostListingClient() {
                     accept="image/*"
                     className="sr-only"
                     onChange={(event) => {
-                      setSelectedPhotoCount(event.target.files?.length ?? 0);
-                      clearError("photos");
+                      syncPhotoFiles(event.target.files ?? []);
                     }}
                   />
                   <div className="flex items-center justify-between gap-3 text-sm text-[#6f6a60]">
                     <span>{selectedPhotoCount > 0 ? `${selectedPhotoCount} photo(s) selected` : "No photos selected yet"}</span>
                     {errors.photos && <span className="text-[#dc2626]">{errors.photos}</span>}
                   </div>
+                  {selectedPhotoPreviews.length > 0 ? (
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                      {selectedPhotoPreviews.map((photo, index) => (
+                        <figure key={photo.key} className="overflow-hidden rounded-2xl border border-[#e1d8c6] bg-white shadow-sm">
+                          <div className="relative">
+                            <img src={photo.url} alt={photo.name} className="h-28 w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removePhotoAtIndex(index)}
+                              className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-black"
+                              aria-label={`Remove ${photo.name}`}
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <figcaption className="truncate px-3 py-2 text-xs text-[#6f6a60]">{photo.name}</figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </section>
 

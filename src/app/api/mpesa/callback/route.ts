@@ -12,15 +12,36 @@ function getCallbackMetadataValue(metadata: CallbackMetadataItem[], name: string
   return metadata.find((item) => item?.Name === name)?.Value;
 }
 
+async function readCallbackBody(request: Request) {
+  const rawBody = await request.text();
+
+  if (!rawBody.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawBody) as Record<string, unknown>;
+  } catch {
+    const formEntries = Object.fromEntries(new URLSearchParams(rawBody));
+
+    return Object.keys(formEntries).length > 0 ? (formEntries as Record<string, unknown>) : rawBody;
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const data = await request.json();
+    const data = await readCallbackBody(request);
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📱 M-PESA CALLBACK RECEIVED!');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(JSON.stringify(data, null, 2));
+    console.log(typeof data === 'string' ? data : JSON.stringify(data, null, 2));
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    if (!data || typeof data === 'string') {
+      console.log('⚠️ Empty or non-JSON callback body received');
+      return NextResponse.json({ ResultCode: 0, ResultDesc: 'Success' });
+    }
 
     const callback = data.Body?.stkCallback;
     

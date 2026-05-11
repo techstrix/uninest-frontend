@@ -271,10 +271,7 @@ export default async function ListingDetailsPage({ params }: PageProps) {
               </div>
               <div>
                 <p className="font-semibold text-gray-900">{landlordName}</p>
-                <p className="text-xs text-gray-500">
-                  {avgRating ? `${avgRating.toFixed(1)} · ${ratingCount} reviews` : "No reviews yet"}
-                </p>
-              </div>
+                            </div>
             </div>
 
             <div className="mt-4 space-y-3 text-sm">
