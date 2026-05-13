@@ -87,6 +87,7 @@ model Listing {
   chiromoWalkingMinutes   Int?      @map("chiromo_walking_min")
   parklandsWalkingMinutes Int?      @map("parklands_walking_min")
   status                  String    @default("draft")
+  expiresAt               DateTime? @map("expires_at")
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
 

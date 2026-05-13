@@ -248,6 +248,8 @@ export default function PostListingClient() {
   const [locationLabel, setLocationLabel] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState("");
+  const [locationLatitude, setLocationLatitude] = useState<number | null>(null);
+  const [locationLongitude, setLocationLongitude] = useState<number | null>(null);
   const [campusTimes, setCampusTimes] = useState<Record<CampusKey, number>>({
     mainWalkingMin: 0,
     chiromoWalkingMin: 0,
@@ -257,6 +259,7 @@ export default function PostListingClient() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const paymentCancelledRef = useRef(false);
   const sectionRefs = useRef<Record<ListingStepKey, HTMLElement | null>>({
     basics: null,
     location: null,
@@ -432,6 +435,8 @@ export default function PostListingClient() {
       }
 
       setLocationLabel(placeName || formatCoordinates(latitude, longitude));
+      setLocationLatitude(latitude);
+      setLocationLongitude(longitude);
       setCampusTimes({
         mainWalkingMin: distances.mainWalkingMin.durationMin,
         chiromoWalkingMin: distances.chiromoWalkingMin.durationMin,
@@ -465,14 +470,14 @@ export default function PostListingClient() {
   }
 
   const closePaymentModal = () => {
-    if (isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment) {
-      return;
-    }
-
+    paymentCancelledRef.current = true;
     setIsPaymentModalOpen(false);
     setPaymentError("");
     setPaymentStatusText("");
     setPendingFormData(null);
+    setIsInitiatingPayment(false);
+    setIsCheckingPayment(false);
+    setIsPublishingAfterPayment(false);
   };
 
   const cloneFormData = (source: FormData) => {
@@ -490,6 +495,16 @@ export default function PostListingClient() {
 
     const formDataToSubmit = cloneFormData(pendingFormData);
     formDataToSubmit.append("checkoutRequestId", checkoutRequestId);
+    formDataToSubmit.set("address", locationLabel);
+    if (locationLatitude !== null) {
+      formDataToSubmit.set("latitude", String(locationLatitude));
+    }
+    if (locationLongitude !== null) {
+      formDataToSubmit.set("longitude", String(locationLongitude));
+    }
+    formDataToSubmit.set("mainWalkingMin", String(campusTimes.mainWalkingMin));
+    formDataToSubmit.set("chiromoWalkingMin", String(campusTimes.chiromoWalkingMin));
+    formDataToSubmit.set("parklandsWalkingMin", String(campusTimes.parklandsWalkingMin));
 
     const response = await fetch("/api/listings", {
       method: "POST",
@@ -549,7 +564,7 @@ export default function PostListingClient() {
   };
 
   const handleListingPayment = async () => {
-    if (!pendingFormData) {
+    if (!pendingFormData || paymentCancelledRef.current) {
       setPaymentError("Listing data is missing. Please submit the form again.");
       return;
     }
@@ -560,6 +575,9 @@ export default function PostListingClient() {
 
     try {
       const result = await initiateListingStkPush(paymentPhone);
+      if (paymentCancelledRef.current || !isPaymentModalOpen) {
+        return;
+      }
 
       if (!result.success) {
         setPaymentError(result.error || "Failed to initiate payment.");
@@ -585,6 +603,9 @@ export default function PostListingClient() {
       setIsCheckingPayment(true);
 
       const paymentStatus = await waitForPaymentResult(checkoutRequestId);
+      if (paymentCancelledRef.current || !isPaymentModalOpen) {
+        return;
+      }
 
       if (!paymentStatus.ok) {
         setPaymentError(paymentStatus.message);
@@ -594,6 +615,9 @@ export default function PostListingClient() {
       setPaymentStatusText("Payment confirmed. Publishing your listing...");
       setIsPublishingAfterPayment(true);
       const publishResult = await publishListingAfterPayment(checkoutRequestId);
+      if (paymentCancelledRef.current || !isPaymentModalOpen) {
+        return;
+      }
 
       if (!publishResult.ok) {
         setPaymentError(publishResult.error || "Could not publish listing.");
@@ -604,9 +628,15 @@ export default function PostListingClient() {
       setPendingFormData(null);
       router.push("/landlord-dashboard");
     } catch {
+      if (paymentCancelledRef.current) {
+        return;
+      }
       setPaymentError("Something went wrong while processing payment.");
       setPaymentStatusText("");
     } finally {
+      if (paymentCancelledRef.current) {
+        return;
+      }
       setIsInitiatingPayment(false);
       setIsCheckingPayment(false);
       setIsPublishingAfterPayment(false);
@@ -658,6 +688,7 @@ export default function PostListingClient() {
       setPaymentPhone("");
       setPaymentError("");
       setPaymentStatusText("");
+      paymentCancelledRef.current = false;
       setIsPaymentModalOpen(true);
     } catch {
       setErrors({ submit: "Something went wrong. Please try again." });
@@ -1065,7 +1096,7 @@ export default function PostListingClient() {
                     <h2 className="text-lg font-bold">Confirm Listing Payment</h2>
                     <p className="text-xs text-[#d7efe6]">Pay KES 1 to publish this listing</p>
                   </div>
-                  <button type="button" onClick={closePaymentModal} disabled={isInitiatingPayment || isCheckingPayment || isPublishingAfterPayment} className="rounded-full p-1.5 text-[#e3f7ef] transition hover:bg-white/10 disabled:opacity-60">
+                  <button type="button" onClick={closePaymentModal} className="rounded-full p-1.5 text-[#e3f7ef] transition hover:bg-white/10">
                     <X className="h-4 w-4" />
                   </button>
                 </div>

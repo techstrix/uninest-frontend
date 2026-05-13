@@ -40,9 +40,10 @@ export async function sendSMS_OTP(phoneNumber: string) {
       to: normalizedPhone,
       channel: "sms",
     })
-
+    console.log(verification.status)
     return { success: true, status: verification.status, phoneNumber: normalizedPhone }
   } catch (error) {
+    console.error(error)
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to send verification code.",

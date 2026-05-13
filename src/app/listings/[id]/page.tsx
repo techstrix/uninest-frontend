@@ -1,14 +1,15 @@
-import Image from "next/image"
 import Link from "next/link"
 import { UniNestWordmark } from "@/components/brand/uninest-wordmark"
 import { notFound } from "next/navigation"
-import { MapPin, ShieldCheck, Mail, Phone } from "lucide-react"
+import { MapPin } from "lucide-react"
 import { prisma } from "@/lib/prisma"
 import PhotosComponent from "./components/photosComponent"
 
 import PhotosComponentNormal from "./components/photosComponentNormal"
 import ViewTracker from "./components/view-tracker"
 import ListingMap from "./components/listing-map"
+import ContactCard from "./components/contact-card"
+import ReviewsSection from "./components/reviews-section"
 
 
 type PageProps = {
@@ -30,16 +31,30 @@ export default async function ListingDetailsPage({ params }: PageProps) {
             },
       },
       reviews: {
+        orderBy: {
+          createdAt: "desc",
+        },
         select: {
+          id: true,
           rating: true,
+          comment: true,
+          createdAt: true,
+          student: {
+            select: {
+              firstName: true,
+              lastName: true,
+              profilePhoto: true,
+            },
+          },
         },
       },
-          landlord: {
+      landlord: {
             include: {
               user: {
                 select: {
                   firstName: true,
                   lastName: true,
+                  profilePhoto: true,
                   phone: true,
                   email: true,
                 },
@@ -90,20 +105,9 @@ export default async function ListingDetailsPage({ params }: PageProps) {
         )
       : null
 
-  const ratingCount = listing.reviews.length
-  const avgRating =
-    ratingCount > 0
-      ? listing.reviews.reduce((sum, review) => sum + review.rating, 0) / ratingCount
-      : null
-
   const landlordName = `${listing.landlord.user.firstName ?? ""} ${listing.landlord.user.lastName ?? ""}`.trim() || "Landlord"
   const landlordEmail = listing.landlord.user.email ?? "Not shared"
-  const initials = landlordName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("")
+  const landlordPhoto = listing.landlord.user.profilePhoto ?? null
 
   const amenities = Array.isArray(listing.amenities)
     ? listing.amenities.filter((item): item is string => typeof item === "string")
@@ -121,10 +125,11 @@ export default async function ListingDetailsPage({ params }: PageProps) {
   
 
   
-  const heroPhoto = listing.photos[0]?.photoUrl
   const sidePhotos = listing.photos.slice(1, 3)
   const listingLat = listing.latitude ?? null
   const listingLng = listing.longitude ?? null
+  const ratingCount = listing.reviews.length
+  const averageRating = ratingCount > 0 ? listing.reviews.reduce((sum, review) => sum + review.rating, 0) / ratingCount : null
 
   return (
     <div className="min-h-screen bg-[#f3f4f6]">
@@ -248,55 +253,39 @@ export default async function ListingDetailsPage({ params }: PageProps) {
                       <LegendItem color="#7c3aed" label="Parklands" />
                     </div>
                     <a
-                      href={`https://www.google.com/maps/dir/?api=1&origin=${Number(listingLat)},${Number(listingLng)}&destination=${nearest?.campus === "Main Campus" ? "36.8146,-1.2771" : nearest?.campus === "Chiromo" ? "36.8048,-1.2727" : "36.8149,-1.2685"}&travelmode=walking`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${Number(listingLat)},${Number(listingLng)}`}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-4 inline-flex rounded-full bg-[#184f43] px-3 py-1.5 text-xs font-semibold text-white"
                     >
-                      Directions
+                      Open in Maps
                     </a>
                   </div>
                 </div>
               </div>
             ) : null}
           </div>
+
+          <ReviewsSection
+            listingId={listing.id}
+            reviews={listing.reviews.map((review) => ({
+              id: review.id,
+              rating: review.rating,
+              comment: review.comment,
+              createdAt: review.createdAt.toISOString(),
+              student: {
+                firstName: review.student.firstName,
+                lastName: review.student.lastName,
+                profilePhoto: review.student.profilePhoto,
+              },
+            }))}
+            averageRating={averageRating}
+            ratingCount={ratingCount}
+          />
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="text-sm font-bold uppercase tracking-wide text-gray-600">Contact Landlord</h3>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#184f43] text-sm font-bold text-white">
-                {initials || "LD"}
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">{landlordName}</p>
-                            </div>
-            </div>
-
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Phone</p>
-                <a href={listing.landlord.user.phone ? `tel:${listing.landlord.user.phone}` : "#"} className="mt-1 inline-flex items-center gap-2 text-[#184f43] font-semibold">
-                  <Phone className="h-4 w-4" />
-                  {listing.landlord.user.phone ?? "Not shared"}
-                </a>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Email</p>
-                <p className="mt-1 inline-flex items-center gap-2 text-[#184f43] font-semibold">
-                  <Mail className="h-4 w-4" />
-                  {landlordEmail}
-                </p>
-              </div>
-
-              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Landlord</p>
-                <p className="mt-1 text-sm text-gray-800">{landlordName}</p>
-              </div>
-            </div>
-          </div>
+          <ContactCard listingId={listing.id} landlordName={landlordName} landlordPhoto={landlordPhoto} phone={listing.landlord.user.phone ?? null} email={landlordEmail} />
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h3 className="text-sm font-bold uppercase tracking-wide text-gray-600">Safety</h3>
             <p className="mt-2 text-sm text-gray-700">

@@ -80,6 +80,23 @@ export async function POST(request: Request) {
         },
       });
 
+      const payment = await prisma.payment.findFirst({
+        where: { checkoutRequestId: callback.CheckoutRequestID, status: PaymentStatus.SUCCESS },
+        select: {
+          listingId: true,
+          purpose: true,
+        },
+      });
+
+      if (payment?.listingId && payment.purpose === "LISTING_FEE") {
+        await prisma.listing.update({
+          where: { id: payment.listingId },
+          data: {
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        });
+      }
+
     } else {
       console.log('❌ PAYMENT FAILED!');
       console.log('Error Code:', callback.ResultCode);

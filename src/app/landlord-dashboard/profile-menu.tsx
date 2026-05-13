@@ -3,16 +3,17 @@
 import { useState } from "react"
 import { useClerk } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { LogOut, Trash2 } from "lucide-react"
+import { LogOut, Trash2, UserCircle2 } from "lucide-react"
 import { toast } from "sonner"
 
 type ProfileMenuProps = {
   fullName: string
-  initials: string
   email: string
+  profilePhoto?: string | null
+  variant?: "dark" | "light"
 }
 
-export default function ProfileMenu({ fullName, initials, email }: ProfileMenuProps) {
+export default function ProfileMenu({ fullName, email, profilePhoto, variant = "dark" }: ProfileMenuProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -57,21 +58,21 @@ export default function ProfileMenu({ fullName, initials, email }: ProfileMenuPr
       <button
         type="button"
         onClick={() => setShowProfileMenu((previous) => !previous)}
-        className="flex w-full items-center gap-3 rounded-xl bg-white/10 px-3 py-3 text-left"
+        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition ${variant === "light" ? "border border-gray-200 bg-white shadow-sm hover:border-[#1f5a48]/30 hover:bg-[#f6fbf8]" : "bg-white/10"}`}
       >
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#245f4d] text-sm font-bold text-white">
-          {initials || "PK"}
+        <div className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full ${variant === "light" ? "bg-[#e9f2ee] text-[#1f5a48]" : "bg-[#245f4d] text-white"}`}>
+          {profilePhoto ? <img src={profilePhoto} alt={fullName} className="h-full w-full object-cover" /> : <UserCircle2 className="h-6 w-6" />}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">{fullName}</p>
-          <p className="text-xs text-emerald-100/75">Landlord · Verified ✓</p>
+          <p className={`truncate text-sm font-semibold ${variant === "light" ? "text-slate-900" : "text-white"}`}>{fullName}</p>
+          <p className={`text-xs ${variant === "light" ? "text-slate-500" : "text-emerald-100/75"}`}>Landlord · Verified ✓</p>
         </div>
       </button>
 
       {showProfileMenu ? (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
-          <div className="absolute bottom-full left-0 z-50 mb-2 w-full overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
             <div className="border-b border-gray-100 px-4 py-3">
               <p className="text-sm font-medium text-gray-900">{fullName}</p>
               <p className="truncate text-xs text-gray-500">{email}</p>

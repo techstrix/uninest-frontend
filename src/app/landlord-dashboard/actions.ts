@@ -58,6 +58,31 @@ async function saveUploadedPhotos(files: File[]) {
   return uploadedUrls
 }
 
+async function saveUploadedProfilePhoto(file: File) {
+  const uploadDir = path.join(process.cwd(), "public/uploads")
+
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true })
+  }
+
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only image files are allowed.")
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("Profile photo should be 5MB or less.")
+  }
+
+  const bytes = await file.arrayBuffer()
+  const buffer = Buffer.from(bytes)
+  const safeName = file.name.replace(/\s+/g, "-")
+  const fileName = `${Date.now()}-${safeName}`
+  const filePath = path.join(uploadDir, fileName)
+
+  fs.writeFileSync(filePath, buffer)
+  return `/uploads/${fileName}`
+}
+
 async function getOwnedListingId(listingId: string, userId: string) {
   const landlordProfile = await prisma.landlordProfile.findUnique({
     where: { userId },
@@ -224,4 +249,35 @@ export async function deleteListingAction(formData: FormData): Promise<ActionRes
 
   revalidatePath("/landlord-dashboard")
   return { ok: true }
+}
+
+export async function updateProfilePhotoAction(formData: FormData): Promise<ActionResult> {
+  const { userId } = await auth()
+
+  if (!userId) {
+    return { ok: false, error: "Not authenticated." }
+  }
+
+  const photo = formData.get("photo")
+  if (!(photo instanceof File) || photo.size === 0) {
+    return { ok: false, error: "Please choose a profile photo." }
+  }
+
+  try {
+    const photoUrl = await saveUploadedProfilePhoto(photo)
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { profilePhoto: photoUrl },
+    })
+
+    revalidatePath("/landlord-dashboard")
+    revalidatePath("/listings")
+    return { ok: true }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to update profile photo.",
+    }
+  }
 }

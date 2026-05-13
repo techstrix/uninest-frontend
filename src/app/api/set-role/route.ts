@@ -41,7 +41,6 @@ export async function POST(req: Request) {
                     role,
                     firstName: clerkUser.firstName,
                     lastName: clerkUser.lastName,
-                    profilePhoto: clerkUser.imageUrl,
                     isActive: true,
                 },
                 update: {
@@ -51,7 +50,6 @@ export async function POST(req: Request) {
                     role,
                     firstName: clerkUser.firstName,
                     lastName: clerkUser.lastName,
-                    profilePhoto: clerkUser.imageUrl,
                     isActive: true,
                 },
             });

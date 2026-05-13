@@ -176,6 +176,7 @@ export async function POST(req: Request) {
           chiromoWalkingMinutes: chiromoWalkingMin,
           parklandsWalkingMinutes: parklandsWalkingMin,
           status: "active",
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
 
